@@ -11,7 +11,7 @@ const tiers = [
     cta: "Find a Dude",
     href: "#crew",
     highlight: false,
-    note: "The $2 is for listing access only. You still pay the dude directly for the haul.",
+    note: "The $2 is for listing access only. The cost to hire your dude is separate, and all payments are handled securely through the app.",
     features: [
       "Full access to all listings",
       "View ratings, trucks & reviews",
