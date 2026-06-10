@@ -22,6 +22,14 @@ import {
 } from "@/lib/db";
 import { getStoredReferralCode, clearStoredReferralCode } from "@/hooks/useReferralCode";
 import { startStripeCheckout } from "@/lib/stripeCheckout";
+import {
+  TRUCK_MAKES,
+  TRUCK_MODELS_BY_MAKE,
+  TRUCK_TYPES,
+  TRUCK_YEARS,
+  SERVICE_AREA_CITIES,
+  DRIVER_TAGLINE_EXAMPLES,
+} from "@/lib/truckData";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -358,88 +366,130 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
             </form>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div className="flex flex-col gap-1.5">
-                  <label className="font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Make
-                  </label>
-                  <input
-                    type="text"
-                    value={truckMake}
-                    onChange={(e) => setTruckMake(e.target.value)}
-                    placeholder="Ford"
-                    className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Model
-                  </label>
-                  <input
-                    type="text"
-                    value={truckModel}
-                    onChange={(e) => setTruckModel(e.target.value)}
-                    placeholder="F-150"
-                    className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Year
-                  </label>
-                  <input
-                    type="number"
-                    value={truckYear}
-                    onChange={(e) => setTruckYear(e.target.value)}
-                    placeholder="2022"
-                    min="1990"
-                    max={new Date().getFullYear() + 1}
-                    className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-              </div>
 
+              {/* ---- Vehicle Type ---- */}
               <div className="flex flex-col gap-1.5">
                 <label className="font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Truck Type
+                  Vehicle Type *
                 </label>
                 <select
+                  required
                   value={truckType}
                   onChange={(e) => setTruckType(e.target.value)}
                   className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
-                  <option value="pickup">Pickup Truck</option>
-                  <option value="box_truck">Box Truck</option>
-                  <option value="flatbed">Flatbed</option>
-                  <option value="cargo_van">Cargo Van</option>
-                  <option value="other">Other</option>
+                  <option value="">Select vehicle type…</option>
+                  {TRUCK_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
                 </select>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Service Area (City / Metro)
-                </label>
-                <input
-                  type="text"
-                  value={serviceArea}
-                  onChange={(e) => setServiceArea(e.target.value)}
-                  placeholder="Houston, TX"
-                  className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
+              {/* ---- Make / Model / Year ---- */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {/* Make */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Make
+                  </label>
+                  <select
+                    value={truckMake}
+                    onChange={(e) => {
+                      setTruckMake(e.target.value);
+                      setTruckModel(""); // reset model when make changes
+                    }}
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="">Select make…</option>
+                    {TRUCK_MAKES.map((make) => (
+                      <option key={make} value={make}>{make}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Model — filtered by make */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Model
+                  </label>
+                  <select
+                    value={truckModel}
+                    onChange={(e) => setTruckModel(e.target.value)}
+                    disabled={!truckMake}
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                  >
+                    <option value="">{truckMake ? "Select model…" : "Select make first"}</option>
+                    {(TRUCK_MODELS_BY_MAKE[truckMake] ?? []).map((model) => (
+                      <option key={model} value={model}>{model}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Year */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Year
+                  </label>
+                  <select
+                    value={truckYear}
+                    onChange={(e) => setTruckYear(e.target.value)}
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="">Year…</option>
+                    {TRUCK_YEARS.map((y) => (
+                      <option key={y} value={String(y)}>{y}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
+              {/* ---- Service Area ---- */}
               <div className="flex flex-col gap-1.5">
                 <label className="font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  About You (optional)
+                  Service Area (City / Metro) *
                 </label>
-                <textarea
+                <select
+                  required
+                  value={serviceArea}
+                  onChange={(e) => setServiceArea(e.target.value)}
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">Select your city…</option>
+                  {SERVICE_AREA_CITIES.map((city) => (
+                    <option key={city} value={city}>{city}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* ---- About You + Tagline ---- */}
+              <div className="flex flex-col gap-1.5">
+                <label className="font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Your Tagline (optional)
+                </label>
+                <p className="text-xs text-muted-foreground -mt-0.5">
+                  A short, memorable line customers will see on your profile.
+                </p>
+                <input
+                  type="text"
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  placeholder="Tell customers a bit about yourself and your experience…"
-                  rows={3}
-                  className="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                  placeholder={DRIVER_TAGLINE_EXAMPLES[Math.floor(Math.random() * DRIVER_TAGLINE_EXAMPLES.length)]}
+                  maxLength={80}
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
+                {/* Quick-pick tagline suggestions */}
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {DRIVER_TAGLINE_EXAMPLES.slice(0, 4).map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setBio(tag)}
+                      className="rounded-full border border-border bg-secondary/50 px-2.5 py-0.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="flex gap-3">
