@@ -269,6 +269,87 @@ export async function getDriverBookings(driverId: string) {
   return { data, error };
 }
 
+/**
+ * Claim an open request: atomically creates a booking and marks the
+ * move_request status as "booked".
+ *
+ * Platform fee is 15% of the quoted price.
+ * Driver payout is quoted_price - platform_fee.
+ *
+ * @param requestId   - The move_request to claim
+ * @param driverId    - The claiming driver's user ID
+ * @param quotedPrice - The price the driver is quoting for the job
+ */
+export async function claimRequest(
+  requestId: string,
+  driverId: string,
+  quotedPrice: number
+): Promise<{ booking: Booking | null; error: Error | null }> {
+  const platformFee = Math.round(quotedPrice * 0.15 * 100) / 100;
+  const driverPayout = Math.round((quotedPrice - platformFee) * 100) / 100;
+
+  // 1. Create the booking record
+  const { data: booking, error: bookingError } = await (supabase
+    .from("bookings") as any)
+    .insert({
+      request_id: requestId,
+      driver_id: driverId,
+      status: "confirmed",
+      quoted_price: quotedPrice,
+      platform_fee: platformFee,
+      driver_payout: driverPayout,
+    })
+    .select()
+    .single();
+
+  if (bookingError) {
+    return { booking: null, error: new Error(bookingError.message) };
+  }
+
+  // 2. Advance the request status to "booked"
+  const { error: statusError } = await (supabase
+    .from("move_requests") as any)
+    .update({ status: "booked" })
+    .eq("id", requestId);
+
+  if (statusError) {
+    // Non-fatal: booking exists, but status update failed — log and continue
+    console.warn("[claimRequest] Failed to update request status:", statusError.message);
+  }
+
+  return { booking: booking as Booking, error: null };
+}
+
+/** Get a single booking by ID (with full request details) */
+export async function getBookingById(bookingId: string) {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("*, move_requests(*)")
+    .eq("id", bookingId)
+    .single();
+  return { data, error };
+}
+
+/** Update a booking's status (e.g. confirmed → in_progress → completed) */
+export async function updateBookingStatus(
+  bookingId: string,
+  status: Booking["status"],
+  completionNotes?: string
+) {
+  const payload: Record<string, unknown> = { status };
+  if (status === "completed") {
+    payload.completed_at = new Date().toISOString();
+    if (completionNotes) payload.completion_notes = completionNotes;
+  }
+  const { data, error } = await (supabase
+    .from("bookings") as any)
+    .update(payload)
+    .eq("id", bookingId)
+    .select()
+    .single();
+  return { data: data as Booking | null, error };
+}
+
 // ============================================================
 // PAYMENTS
 // ============================================================
