@@ -1,5 +1,6 @@
 "use server"
 
+import { createClient } from "@/lib/supabase/server"
 import {
   buildReferralLink,
   generateReferralCode,
@@ -53,16 +54,37 @@ export async function submitReferralPartner(
     payout_status: "pending",
   }
 
-  // Supabase-ready: when the Supabase integration is connected, insert into a
-  // dedicated `referral_partners` table (kept separate from driver profiles).
-  //
-  //   import { createClient } from "@/lib/supabase/server"
-  //   const supabase = await createClient()
-  //   const { error } = await supabase.from("referral_partners").insert(partner)
-  //   if (error) return { ok: false, message: "Something went wrong. Try again." }
-  //
-  // Until then we log and return the generated code so the UX is complete.
-  console.log("[v0] New referral partner:", partner)
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("dwat_referral_partners")
+    .insert({ ...partner, agreed_to_terms: agreed })
+
+  if (error) {
+    console.log("[v0] Referral insert error:", error.message)
+    // Unique violation on referral_code — retry once with a fresh code.
+    if (error.code === "23505") {
+      const retryCode = generateReferralCode(firstName)
+      const retryLink = buildReferralLink(retryCode)
+      const { error: retryError } = await supabase
+        .from("dwat_referral_partners")
+        .insert({
+          ...partner,
+          referral_code: retryCode,
+          referral_link: retryLink,
+          agreed_to_terms: agreed,
+        })
+      if (retryError) {
+        return { ok: false, message: "Something went wrong. Please try again." }
+      }
+      return {
+        ok: true,
+        message: "You're in! Here's your referral link.",
+        referralCode: retryCode,
+        referralLink: retryLink,
+      }
+    }
+    return { ok: false, message: "Something went wrong. Please try again." }
+  }
 
   return {
     ok: true,
