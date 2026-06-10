@@ -18,13 +18,19 @@ import { AuthProvider } from "./contexts/AuthContext";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import ReferralPartner from "./pages/ReferralPartner";
+import AffiliateDashboard from "./pages/AffiliateDashboard";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      {/* /join?ref=CODE — same as home but captures the referral code */}
+      <Route path="/join" component={Home} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/referral-partner" component={ReferralPartner} />
+      <Route path="/affiliate-dashboard" component={AffiliateDashboard} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

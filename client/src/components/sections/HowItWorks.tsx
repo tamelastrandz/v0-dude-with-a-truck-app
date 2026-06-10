@@ -1,55 +1,60 @@
-/** HowItWorks — Step-by-step explainer. Preserved from original v0 design. */
+/**
+ * HowItWorks — 4-step explainer with perks.
+ * Updated from GitHub: https://github.com/tamelastrandz/v0-dude-with-a-truck-app
+ */
 
 import { CheckCircle2 } from "lucide-react";
 
 const steps = [
   {
-    number: "01",
-    title: "Tell Us What You Need",
-    desc: "Describe your move, haul, or delivery. Takes 60 seconds.",
+    num: "01",
+    title: "Choose Your Area",
+    desc: "Pick your metro and the city or ZIP code where you need a hand.",
   },
   {
-    number: "02",
-    title: "Get Matched Fast",
-    desc: "We connect you with a vetted dude in your area who's ready to roll.",
+    num: "02",
+    title: "Pick Your Dude",
+    desc: "Browse local truck owners nearby, compare ratings, trucks, and starting prices.",
   },
   {
-    number: "03",
-    title: "Your Stuff Gets Moved",
-    desc: "Your dude shows up on time, handles everything, and gets it done right.",
+    num: "03",
+    title: "Book & Pay",
+    desc: "Lock in a time and pay securely in the app. No mystery fees, no hassle.",
+  },
+  {
+    num: "04",
+    title: "Get It Done",
+    desc: "A vetted dude rolls up on time, loads it, and gets it where it's going.",
   },
 ];
 
 const perks = [
-  "Background-checked and vetted drivers",
-  "Real-time tracking and updates",
-  "Transparent pricing, no hidden fees",
-  "Insured for your peace of mind",
+  "Background-checked, insured crew",
+  "Flat, upfront pricing — no surprises",
+  "Real-time tracking from pickup to drop-off",
+  "Heavy lifting included, always",
 ];
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="mx-auto max-w-7xl px-6 py-24 lg:px-8">
-      <div className="grid grid-cols-1 gap-16 lg:grid-cols-2 lg:gap-24">
-        {/* Left column */}
+    <section id="how-it-works" className="border-t border-border">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-16 px-6 py-24 lg:grid-cols-2 lg:gap-12 lg:px-8">
         <div>
           <p className="font-heading text-sm font-semibold uppercase tracking-widest text-primary">
             How It Works
           </p>
           <h2 className="font-heading mt-4 text-balance text-5xl font-bold uppercase leading-[0.95] tracking-tight text-foreground lg:text-6xl">
-            Simple. Fast. Done Right.
+            Booked In A Tap. Done In A Day.
           </h2>
           <div className="mt-12 flex flex-col gap-10">
             {steps.map((step) => (
-              <div key={step.number} className="flex gap-6">
-                <span className="font-heading shrink-0 text-4xl font-bold text-primary/30 leading-none">
-                  {step.number}
-                </span>
+              <div key={step.num} className="flex gap-6">
+                <span className="font-heading text-3xl font-bold text-primary">{step.num}</span>
                 <div>
-                  <h3 className="font-heading text-xl font-bold uppercase tracking-wide text-foreground">
+                  <h3 className="font-heading text-lg font-bold uppercase tracking-wide text-foreground">
                     {step.title}
                   </h3>
-                  <p className="mt-2 text-pretty leading-relaxed text-muted-foreground">
+                  <p className="mt-2 max-w-md text-pretty leading-relaxed text-muted-foreground">
                     {step.desc}
                   </p>
                 </div>
@@ -65,8 +70,6 @@ export function HowItWorks() {
             ))}
           </div>
         </div>
-
-        {/* Right column — image */}
         <div className="relative">
           <div className="overflow-hidden rounded-xl border border-border">
             <img

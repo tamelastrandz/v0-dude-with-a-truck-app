@@ -15,8 +15,13 @@ import { HowItWorks } from "@/components/sections/HowItWorks";
 import { FeaturedDudes } from "@/components/sections/FeaturedDudes";
 import { Pricing } from "@/components/sections/Pricing";
 import { CtaFooter } from "@/components/sections/CtaFooter";
+import { useReferralCode } from "@/hooks/useReferralCode";
 
 export default function Home() {
+  // Capture ?ref= param and persist to sessionStorage so it survives
+  // navigation before the driver completes signup.
+  useReferralCode();
+
   return (
     <main className="bg-background">
       <SiteHeader />

@@ -370,6 +370,134 @@ export async function recordPayment(
 // AFFILIATES
 // ============================================================
 
+/**
+ * Generate a unique referral code for a new affiliate.
+ * Format: DUDE-XXXX where XXXX is 4 uppercase alphanumeric chars.
+ * Retries up to 5 times if a collision is detected.
+ */
+export async function generateUniqueReferralCode(baseName?: string): Promise<string> {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no confusable chars (0/O, 1/I)
+
+  function makeCode(name?: string): string {
+    // Use first 4 letters of name if provided, otherwise random
+    const prefix = name
+      ? name.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 4).padEnd(4, "X")
+      : Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    return `DUDE-${prefix}`;
+  }
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = attempt === 0 ? makeCode(baseName) : makeCode(); // fallback to random after first try
+    const { data } = await supabase
+      .from("affiliates")
+      .select("id")
+      .eq("referral_code", code)
+      .maybeSingle();
+    if (!data) return code; // no collision — use it
+  }
+
+  // Final fallback: fully random 8-char suffix
+  return `DUDE-${Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")}`;
+}
+
+/**
+ * Full affiliate signup flow:
+ *  1. Creates a Supabase auth user
+ *  2. Updates profiles.role = "affiliate"
+ *  3. Generates a unique referral code
+ *  4. Creates the affiliates row
+ *
+ * Returns the new user ID, referral code, and any error.
+ */
+export async function signUpAffiliate(opts: {
+  email: string;
+  password: string;
+  fullName: string;
+  phone?: string;
+  payoutEmail?: string;
+}): Promise<{ userId: string | null; referralCode: string | null; error: Error | null }> {
+  // 1. Create auth user with role = affiliate in metadata
+  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    email: opts.email,
+    password: opts.password,
+    options: {
+      data: {
+        full_name: opts.fullName,
+        role: "affiliate",
+        phone: opts.phone ?? null,
+      },
+    },
+  });
+
+  if (signUpError) return { userId: null, referralCode: null, error: new Error(signUpError.message) };
+
+  const userId = signUpData.user?.id;
+  if (!userId) return { userId: null, referralCode: null, error: new Error("No user ID returned.") };
+
+  // 2. Ensure profile role is set to affiliate (trigger may have already done this)
+  await (supabase.from("profiles") as any)
+    .update({ role: "affiliate", phone: opts.phone ?? null })
+    .eq("id", userId);
+
+  // 3. Generate unique referral code based on first name
+  const firstName = opts.fullName.split(" ")[0];
+  const referralCode = await generateUniqueReferralCode(firstName);
+
+  // 4. Create affiliates row
+  const { error: affiliateError } = await (supabase.from("affiliates") as any)
+    .insert({
+      user_id: userId,
+      referral_code: referralCode,
+      payout_email: opts.payoutEmail ?? opts.email,
+    });
+
+  if (affiliateError) {
+    return { userId, referralCode: null, error: new Error(affiliateError.message) };
+  }
+
+  return { userId, referralCode, error: null };
+}
+
+/**
+ * Get full affiliate dashboard stats for a given user.
+ * Returns: affiliate record, all referrals (with status breakdown), and all payouts.
+ */
+export async function getAffiliateDashboard(userId: string) {
+  // Fetch affiliate record
+  const { data: affiliateRaw, error: affError } = await supabase
+    .from("affiliates")
+    .select("*")
+    .eq("user_id", userId)
+    .single();
+
+  if (affError || !affiliateRaw) {
+    return { affiliate: null, referrals: [], payouts: [], error: affError };
+  }
+
+  const affiliate = affiliateRaw as Affiliate;
+
+  // Fetch all referrals for this affiliate (join driver profile info)
+  const { data: referrals } = await supabase
+    .from("affiliate_referrals")
+    .select("*, profiles!affiliate_referrals_referred_driver_id_fkey(full_name, email, created_at)")
+    .eq("affiliate_id", affiliate.id)
+    .order("created_at", { ascending: false });
+
+  // Fetch all payouts
+  const { data: payouts } = await supabase
+    .from("affiliate_payouts")
+    .select("*")
+    .eq("affiliate_id", affiliate.id)
+    .order("created_at", { ascending: false });
+
+  return {
+    affiliate: affiliate as Affiliate,
+    referrals: (referrals ?? []) as any[],
+    payouts: (payouts ?? []) as any[],
+    error: null,
+  };
+}
+
 /** Look up an affiliate by their referral code */
 export async function getAffiliateByCode(code: string) {
   const { data, error } = await supabase

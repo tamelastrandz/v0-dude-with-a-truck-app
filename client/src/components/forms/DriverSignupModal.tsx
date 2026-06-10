@@ -22,6 +22,7 @@ import {
   getAffiliateByCode,
   recordAffiliateReferral,
 } from "@/lib/db";
+import { getStoredReferralCode, clearStoredReferralCode } from "@/hooks/useReferralCode";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -41,7 +42,8 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [referralCode, setReferralCode] = useState("");
+  // Pre-fill referral code from ?ref= URL param (stored in sessionStorage)
+  const [referralCode, setReferralCode] = useState(() => getStoredReferralCode() ?? "");
 
   // Step 2 — Truck info
   const [truckMake, setTruckMake] = useState("");
@@ -160,6 +162,9 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
 
       // 6. Sign in the new user
       await signIn(email, password);
+
+      // Clear the referral code from sessionStorage after successful signup
+      clearStoredReferralCode();
 
       toast.success(
         plan === "founders"
