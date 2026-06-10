@@ -20,6 +20,7 @@ import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import ReferralPartner from "./pages/ReferralPartner";
 import AffiliateDashboard from "./pages/AffiliateDashboard";
+import PaymentSuccess from "./pages/PaymentSuccess";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/referral-partner" component={ReferralPartner} />
       <Route path="/affiliate-dashboard" component={AffiliateDashboard} />
+      <Route path="/payment-success" component={PaymentSuccess} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

@@ -112,7 +112,7 @@ export function registerStripeRoutes(app: Express): void {
                   plan_key: planKey,
                 },
               },
-        success_url: `${origin}/dashboard?checkout=success&plan=${planKey}`,
+        success_url: `${origin}/payment-success?plan=${planKey}`,
         cancel_url: `${origin}/#pricing`,
       };
 
