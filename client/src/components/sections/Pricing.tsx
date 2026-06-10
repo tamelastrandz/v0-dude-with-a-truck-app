@@ -11,40 +11,22 @@ import { DriverSignupModal } from "@/components/forms/DriverSignupModal";
 
 const tiers = [
   {
-    name: "Founders Special",
-    price: "$14.50",
-    cadence: "/month after 30-day free trial",
-    desc: "Lock in the lowest rate forever. For the first drivers who join the platform.",
-    features: [
-      "30 days completely free",
-      "Locked-in Founders rate — $14.50/mo forever",
-      "Full driver profile listing",
-      "Unlimited customer leads",
-      "Priority placement in search",
-      "Dedicated support line",
-    ],
-    note: "🔒 Founders rate is locked in for life. Price never increases.",
-    cta: "Claim Founders Rate",
-    href: "#",
-    highlight: true,
-    isDriverSignup: true,
-    planKey: "founders",
-  },
-  {
     name: "Standard",
     price: "$29",
     cadence: "/month",
-    desc: "Full access to the platform at the standard monthly rate.",
+    desc: "Full access to the platform at the standard monthly rate. No contracts, cancel anytime.",
     features: [
       "Full driver profile listing",
       "Unlimited customer leads",
-      "Standard placement in search",
-      "Email support",
+      "Placement in driver search",
+      "Email & phone support",
+      "Background check included",
+      "Start earning immediately",
     ],
     note: null,
-    cta: "Get Started",
+    cta: "List My Truck — $29/mo",
     href: "#",
-    highlight: false,
+    highlight: true,
     isDriverSignup: true,
     planKey: "standard",
   },
@@ -52,7 +34,7 @@ const tiers = [
 
 export function Pricing() {
   const [signupOpen, setSignupOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<"founders" | "standard">("founders");
+  const [selectedPlan, setSelectedPlan] = useState<"founders" | "standard">("standard");
 
   const handleCta = (tier: (typeof tiers)[number]) => {
     if (tier.isDriverSignup) {
@@ -75,7 +57,7 @@ export function Pricing() {
           just a truck and a work ethic.
         </p>
 
-        <div className="mt-14 grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-6">
+        <div className="mt-14 grid grid-cols-1 gap-8 max-w-lg">
           {tiers.map((tier) => (
             <div
               key={tier.name}
