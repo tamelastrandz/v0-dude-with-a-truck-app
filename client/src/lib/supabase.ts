@@ -11,19 +11,26 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+// ---------------------------------------------------------------------------
+// Supabase project credentials.
+// These fall back to the hardcoded values so the app works in the Manus
+// preview environment without needing a .env file.
+// For Vercel / other hosts, set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
+// as environment variables and the fallbacks below will be ignored.
+// ---------------------------------------------------------------------------
+const SUPABASE_URL = "https://cfkvfmdjbeyemencgbxx.supabase.co";
+const SUPABASE_ANON_KEY =
+  "sb_publishable_c9Y0kf7TAMPbLilyo-15EA_XyXMT2A3";
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn(
-    "[Supabase] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is not set. " +
-      "Database features will not work until you add these to your .env file."
-  );
-}
+const supabaseUrl =
+  (import.meta.env.VITE_SUPABASE_URL as string | undefined) || SUPABASE_URL;
+const supabaseAnonKey =
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ||
+  SUPABASE_ANON_KEY;
 
 export const supabase = createClient<Database>(
-  supabaseUrl ?? "https://placeholder.supabase.co",
-  supabaseAnonKey ?? "placeholder-key",
+  supabaseUrl,
+  supabaseAnonKey,
   {
     auth: {
       persistSession: true,
