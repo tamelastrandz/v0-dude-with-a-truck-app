@@ -27,13 +27,13 @@ export function Hero() {
           </p>
         </div>
 
-        <h1 className="font-heading mt-6 max-w-3xl text-balance text-6xl font-bold uppercase leading-[0.92] tracking-tight text-foreground sm:text-7xl lg:text-8xl">
-          Got Stuff? <span className="text-primary">We&apos;ve Got</span> The Truck.
+        <h1 className="font-heading mt-6 max-w-4xl text-balance text-5xl font-bold uppercase leading-[0.92] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
+          Find a <span className="text-primary">Dude With A Truck</span> Near You.
         </h1>
 
         <p className="mx-auto mt-7 max-w-xl text-pretty text-lg leading-relaxed lg:mx-0" style={{ color: "#ededed" }}>
-          Hauling, moving, and same-day delivery handled by a strong, vetted crew. No flaky
-          no-shows. No mystery fees. Just a dependable dude and a truck, right when you need one.
+          Browse local truck owners across your metro area for moving, hauling, pickups, deliveries
+          and more.
         </p>
 
         <div className="mt-9 flex w-full flex-col items-center gap-4 sm:w-auto sm:flex-row">

@@ -3,17 +3,22 @@ import { CheckCircle2 } from "lucide-react"
 const steps = [
   {
     num: "01",
-    title: "Tell Us What's Up",
-    desc: "Snap a photo or describe the job. Get an upfront, honest quote in minutes.",
+    title: "Choose Your Area",
+    desc: "Pick your metro and the city or ZIP code where you need a hand.",
   },
   {
     num: "02",
-    title: "Pick Your Time",
-    desc: "Book a slot that works for you. Need it now? Same-day dudes are on standby.",
+    title: "Pick Your Dude",
+    desc: "Browse local truck owners nearby, compare ratings, trucks, and starting prices.",
   },
   {
     num: "03",
-    title: "We Show Up & Haul",
+    title: "Book & Pay",
+    desc: "Lock in a time and pay securely in the app. No mystery fees, no hassle.",
+  },
+  {
+    num: "04",
+    title: "Get It Done",
     desc: "A vetted dude rolls up on time, loads it, and gets it where it's going.",
   },
 ]
