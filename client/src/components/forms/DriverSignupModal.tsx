@@ -12,17 +12,16 @@
  */
 
 import { useState } from "react";
-import { X, Truck, Eye, EyeOff, Check } from "lucide-react";
+import { X, Truck, Eye, EyeOff, Check, CreditCard } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import {
-  createFoundersSubscription,
-  createStandardSubscription,
   upsertDriverProfile,
   getAffiliateByCode,
   recordAffiliateReferral,
 } from "@/lib/db";
 import { getStoredReferralCode, clearStoredReferralCode } from "@/hooks/useReferralCode";
+import { startStripeCheckout } from "@/lib/stripeCheckout";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -145,14 +144,7 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
         total_jobs: 0,
       });
 
-      // 4. Create subscription
-      if (plan === "founders") {
-        await createFoundersSubscription(userId);
-      } else {
-        await createStandardSubscription(userId);
-      }
-
-      // 5. Handle affiliate referral code (if provided)
+      // 4. Handle affiliate referral code (if provided)
       if (referralCode.trim()) {
         const { data: affiliate } = await getAffiliateByCode(referralCode.trim().toUpperCase());
         if (affiliate) {
@@ -160,19 +152,26 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
         }
       }
 
-      // 6. Sign in the new user
+      // 5. Sign in the new user
       await signIn(email, password);
 
       // Clear the referral code from sessionStorage after successful signup
       clearStoredReferralCode();
 
-      toast.success(
-        plan === "founders"
-          ? "Welcome! Your 30-day free trial has started. You're locked in at $14.50/mo forever."
-          : "Welcome to Dude With A Truck! Your account is active."
-      );
-
+      // 6. Launch Stripe Checkout for the selected subscription plan.
+      //    The webhook (invoice.paid) will activate the subscription in Supabase
+      //    after the driver completes payment.
+      toast.success("Account created! Redirecting to secure payment…");
       handleClose();
+
+      await startStripeCheckout({
+        userId,
+        email,
+        fullName,
+        planKey: plan,
+      });
+
+      // Navigate to dashboard — subscription will be activated by the webhook
       navigate("/dashboard");
     } catch (err) {
       console.error("[DriverSignup] Unexpected error:", err);
@@ -456,7 +455,7 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
                   disabled={loading}
                   className="font-heading inline-flex h-10 flex-1 items-center justify-center rounded-lg bg-primary text-sm font-semibold uppercase tracking-wide text-primary-foreground transition-colors hover:bg-primary/80 disabled:opacity-50"
                 >
-                  {loading ? "Creating Account…" : "Start Free Trial"}
+                  {loading ? "Creating Account…" : plan === "founders" ? "Start Free Trial → Payment" : "Continue to Payment"}
                 </button>
               </div>
 

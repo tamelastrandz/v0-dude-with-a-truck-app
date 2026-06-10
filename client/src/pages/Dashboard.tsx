@@ -10,6 +10,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCheckoutSuccess } from "@/hooks/useCheckoutSuccess";
 import {
   Truck,
   Package,
@@ -41,6 +42,9 @@ type DriverTab = "overview" | "browse";
 export default function Dashboard() {
   const { user, profile, loading, signOut } = useAuth();
   const [, navigate] = useLocation();
+
+  // Show success toast if redirected back from Stripe Checkout
+  useCheckoutSuccess();
 
   // Data states
   const [requests, setRequests] = useState<MoveRequest[]>([]);

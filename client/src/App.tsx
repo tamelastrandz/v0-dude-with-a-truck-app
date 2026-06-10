@@ -20,8 +20,8 @@ import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import ReferralPartner from "./pages/ReferralPartner";
 import AffiliateDashboard from "./pages/AffiliateDashboard";
-
 function Router() {
+  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path="/" component={Home} />
