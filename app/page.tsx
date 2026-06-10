@@ -12,10 +12,10 @@ export default function Page() {
     <main className="bg-background">
       <SiteHeader />
       <Hero />
+      <FeaturedDudes />
       <StatsBar />
       <Services />
       <HowItWorks />
-      <FeaturedDudes />
       <Pricing />
       <CtaFooter />
     </main>

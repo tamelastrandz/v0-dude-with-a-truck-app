@@ -15,7 +15,7 @@ export function Hero() {
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/60" />
       </div>
 
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col justify-center px-6 pt-28 pb-16 lg:px-8">
+      <div className="mx-auto flex min-h-screen max-w-7xl flex-col items-center justify-center px-6 pt-28 pb-16 text-center lg:items-start lg:px-8 lg:text-left">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1" aria-hidden="true">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -31,12 +31,12 @@ export function Hero() {
           Got Stuff? <span className="text-primary">We&apos;ve Got</span> The Truck.
         </h1>
 
-        <p className="mt-7 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
+        <p className="mx-auto mt-7 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground lg:mx-0">
           Hauling, moving, and same-day delivery handled by a strong, vetted crew. No flaky
           no-shows. No mystery fees. Just a dependable dude and a truck, right when you need one.
         </p>
 
-        <div className="mt-9 flex flex-col gap-4 sm:flex-row">
+        <div className="mt-9 flex w-full flex-col items-center gap-4 sm:w-auto sm:flex-row">
           <a
             href="#crew"
             className={cn(
