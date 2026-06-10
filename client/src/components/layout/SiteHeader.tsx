@@ -19,6 +19,7 @@ const navLinks = [
   { label: "How It Works", href: "#how-it-works" },
   { label: "Pricing", href: "#pricing" },
   { label: "Crew", href: "#crew" },
+  { label: "Referral Partners", href: "/referral-partner", highlight: true },
 ];
 
 export function SiteHeader() {
@@ -57,15 +58,19 @@ export function SiteHeader() {
 
           {/* Desktop nav */}
           <nav className="hidden items-center gap-9 lg:flex" aria-label="Primary">
-            {navLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                className="font-heading text-sm font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {link.label}
-              </a>
-            ))}
+          {navLinks.map((link) => (
+            <a
+              key={link.label}
+              href={link.href}
+              className={
+                link.highlight
+                  ? "font-heading text-sm font-semibold uppercase tracking-wide text-primary transition-colors hover:text-primary/80 border border-primary/30 rounded-md px-3 py-1 hover:bg-primary/10"
+                  : "font-heading text-sm font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+              }
+            >
+              {link.label}
+            </a>
+          ))}
           </nav>
 
           {/* Desktop CTA / User menu */}
@@ -156,7 +161,11 @@ export function SiteHeader() {
                   key={link.label}
                   href={link.href}
                   onClick={() => setOpen(false)}
-                  className="font-heading rounded-md px-3 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  className={
+                    link.highlight
+                      ? "font-heading rounded-md px-3 py-3 text-sm font-semibold uppercase tracking-wide text-primary transition-colors hover:bg-primary/10"
+                      : "font-heading rounded-md px-3 py-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  }
                 >
                   {link.label}
                 </a>
