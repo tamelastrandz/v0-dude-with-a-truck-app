@@ -6,16 +6,16 @@ export function CtaFooter() {
   return (
     <footer className="border-t border-border">
       <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-        <div className="flex flex-col items-start justify-between gap-8 rounded-xl border border-border bg-card p-10 lg:flex-row lg:items-center">
+        <div className="flex flex-col items-center justify-between gap-8 rounded-xl border border-border bg-card p-10 text-center lg:flex-row lg:items-center lg:text-left">
           <div>
             <h2 className="font-heading text-balance text-4xl font-bold uppercase leading-[0.95] tracking-tight text-foreground lg:text-5xl">
               Got Stuff To Move?
             </h2>
-            <p className="mt-3 max-w-md text-pretty leading-relaxed text-muted-foreground">
+            <p className="mx-auto mt-3 max-w-md text-pretty leading-relaxed text-muted-foreground lg:mx-0">
               A dependable dude with a truck is one tap away in Atlanta and Houston.
             </p>
           </div>
-          <div className="flex flex-col gap-4 sm:flex-row">
+          <div className="flex w-full flex-col items-center gap-4 sm:w-auto sm:flex-row">
             <a
               href="#crew"
               className={cn(
