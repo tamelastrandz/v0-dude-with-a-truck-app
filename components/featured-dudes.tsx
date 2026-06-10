@@ -28,6 +28,24 @@ const dudes = [
     jobs: 729,
     img: "/images/dude-sam.png",
   },
+  {
+    name: "Andre Vega",
+    quote: "Treat your stuff like my own.",
+    rating: "5.0",
+    truck: "RAM 2500 · 8ft Bed",
+    location: "Houston, TX",
+    jobs: 547,
+    img: "/images/dude-andre.png",
+  },
+  {
+    name: "DeShawn Park",
+    quote: "Show up early, finish strong.",
+    rating: "4.8",
+    truck: "Toyota Tundra · 6.5ft Bed",
+    location: "Atlanta, GA",
+    jobs: 391,
+    img: "/images/dude-deshawn.png",
+  },
 ]
 
 export function FeaturedDudes() {
