@@ -11,6 +11,7 @@ const tiers = [
     cta: "Find a Dude",
     href: "#crew",
     highlight: false,
+    note: "The $2 is for listing access only. You still pay the dude directly for the haul.",
     features: [
       "Full access to all listings",
       "View ratings, trucks & reviews",
@@ -26,6 +27,7 @@ const tiers = [
     cta: "List My Truck",
     href: "#",
     highlight: true,
+    note: undefined,
     features: [
       "Your own driver profile & photos",
       "Show up in local search results",
@@ -85,6 +87,12 @@ export function Pricing() {
                   </li>
                 ))}
               </ul>
+
+              {tier.note && (
+                <p className="mt-6 rounded-md border border-border bg-secondary/50 p-3 text-sm leading-relaxed text-muted-foreground">
+                  {tier.note}
+                </p>
+              )}
 
               <a
                 href={tier.href}
