@@ -24,9 +24,9 @@ export function SiteHeader() {
           <Image
             src="/images/logo-badge.png"
             alt="Dude With A Truck logo"
-            width={44}
-            height={44}
-            className="size-11 rounded-md"
+            width={56}
+            height={56}
+            className="h-12 w-12 object-contain"
             priority
           />
           <span className="font-heading text-sm font-bold uppercase leading-[0.95] tracking-wide text-foreground">

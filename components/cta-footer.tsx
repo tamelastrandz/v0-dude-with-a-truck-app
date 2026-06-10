@@ -44,9 +44,9 @@ export function CtaFooter() {
             <Image
               src="/images/logo-badge.png"
               alt="Dude With A Truck logo"
-              width={36}
-              height={36}
-              className="size-9 rounded-md"
+              width={44}
+              height={44}
+              className="h-10 w-10 object-contain"
             />
             <span className="font-heading text-sm font-bold uppercase tracking-wide text-foreground">
               Dude With A Truck
