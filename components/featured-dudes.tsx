@@ -1,4 +1,11 @@
+"use client"
+
+import { useState } from "react"
 import { Star, Truck, MapPin } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+const cities = ["All", "Atlanta, GA", "Houston, TX"] as const
+type City = (typeof cities)[number]
 
 const dudes = [
   {
@@ -49,6 +56,11 @@ const dudes = [
 ]
 
 export function FeaturedDudes() {
+  const [activeCity, setActiveCity] = useState<City>("All")
+
+  const filteredDudes =
+    activeCity === "All" ? dudes : dudes.filter((dude) => dude.location === activeCity)
+
   return (
     <section id="crew" className="border-t border-border">
       <div className="mx-auto max-w-7xl px-6 py-24 text-center lg:px-8">
@@ -63,8 +75,27 @@ export function FeaturedDudes() {
           hauling in your area.
         </p>
 
-        <div className="mt-16 grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
-          {dudes.map((dude) => (
+        <div className="mt-10 flex justify-center">
+          <div className="inline-flex flex-wrap justify-center gap-1 rounded-lg border border-border bg-card p-1">
+            {cities.map((city) => (
+              <button
+                key={city}
+                onClick={() => setActiveCity(city)}
+                className={cn(
+                  "font-heading rounded-md px-5 py-2.5 text-sm font-bold uppercase tracking-wide transition-colors",
+                  activeCity === city
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {city === "All" ? "All Dudes" : city.split(",")[0]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-12 grid grid-cols-1 gap-7 md:grid-cols-2 lg:grid-cols-3">
+          {filteredDudes.map((dude) => (
             <article
               key={dude.name}
               className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card text-left transition-colors hover:border-primary/50"
