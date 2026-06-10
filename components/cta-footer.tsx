@@ -60,6 +60,12 @@ export function CtaFooter() {
             <a href="#crew" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
               Crew
             </a>
+            <a
+              href="/referral-partner"
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Earn Referrals
+            </a>
           </nav>
           <p className="text-sm text-muted-foreground">
             &copy; {new Date().getFullYear()} Dude With A Truck
