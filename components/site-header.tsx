@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Truck, Phone, Menu, X } from "lucide-react"
+import Image from "next/image"
+import { Phone, Menu, X } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -20,9 +21,14 @@ export function SiteHeader() {
     <header className="absolute inset-x-0 top-0 z-50">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-8">
         <a href="#" className="flex items-center gap-3">
-          <span className="flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Truck className="size-5" aria-hidden="true" />
-          </span>
+          <Image
+            src="/images/logo-badge.png"
+            alt="Dude With A Truck logo"
+            width={44}
+            height={44}
+            className="size-11 rounded-md"
+            priority
+          />
           <span className="font-heading text-sm font-bold uppercase leading-[0.95] tracking-wide text-foreground">
             Dude With
             <br />A Truck

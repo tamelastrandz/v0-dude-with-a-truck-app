@@ -1,4 +1,5 @@
-import { Truck, ArrowRight } from "lucide-react"
+import Image from "next/image"
+import { ArrowRight } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -40,9 +41,13 @@ export function CtaFooter() {
 
         <div className="mt-14 flex flex-col items-center justify-between gap-6 border-t border-border pt-8 sm:flex-row">
           <div className="flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Truck className="size-4" aria-hidden="true" />
-            </span>
+            <Image
+              src="/images/logo-badge.png"
+              alt="Dude With A Truck logo"
+              width={36}
+              height={36}
+              className="size-9 rounded-md"
+            />
             <span className="font-heading text-sm font-bold uppercase tracking-wide text-foreground">
               Dude With A Truck
             </span>

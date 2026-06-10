@@ -15,26 +15,13 @@ const oswald = Oswald({
 })
 
 export const metadata: Metadata = {
-  title: 'Dude With A Truck — Got Stuff? We\u2019ve Got The Truck.',
+  title: 'Dude With A Truck — Find a Dude With A Truck Near You',
   description:
-    'Hauling, moving, and same-day delivery handled by a strong, vetted crew in Atlanta and Houston. Background-checked dudes with trucks, ready when you need one.',
+    'Browse local truck owners across your metro for moving, hauling, pickups, and same-day delivery. Background-checked dudes with trucks in Atlanta and Houston.',
   generator: 'v0.app',
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
+    icon: '/images/logo-badge.png',
+    apple: '/images/logo-badge.png',
   },
 }
 
