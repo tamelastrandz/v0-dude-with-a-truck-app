@@ -31,7 +31,7 @@ export function Hero() {
           Got Stuff? <span className="text-primary">We&apos;ve Got</span> The Truck.
         </h1>
 
-        <p className="mx-auto mt-7 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground lg:mx-0">
+        <p className="mx-auto mt-7 max-w-xl text-pretty text-lg leading-relaxed lg:mx-0" style={{ color: "#ededed" }}>
           Hauling, moving, and same-day delivery handled by a strong, vetted crew. No flaky
           no-shows. No mystery fees. Just a dependable dude and a truck, right when you need one.
         </p>
