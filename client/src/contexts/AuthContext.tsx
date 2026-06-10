@@ -55,19 +55,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch the profile row for the current user
+  // Fetch the profile row for the current user.
+  // Uses maybeSingle() so a missing row returns null instead of throwing.
   const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("[Auth] Failed to fetch profile:", error.message);
       return null;
     }
-    return data as Profile;
+    return data as Profile | null;
   }, []);
 
   const refreshProfile = useCallback(async () => {
