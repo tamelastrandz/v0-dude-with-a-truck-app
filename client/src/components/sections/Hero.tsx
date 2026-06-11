@@ -1,9 +1,8 @@
 /**
- * Hero — Full-bleed hero section with truck background image.
- * Preserves original v0 design. Adds "Get a Quote" CTA that opens the customer request modal.
+ * Hero — Custom brand banner with baked-in artwork and a clickable CTA overlay.
+ * Tapping "Find a Dude Near You" opens the customer request modal.
  */
 
-import { Star, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { CustomerRequestModal } from "@/components/forms/CustomerRequestModal";
 
@@ -12,60 +11,22 @@ export function Hero() {
 
   return (
     <>
-      <section className="relative isolate overflow-hidden">
-        <div className="absolute inset-0 -z-10">
+      <section className="relative w-full bg-background">
+        <div className="relative mx-auto w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl">
           <img
-            src="/images/hero-truck.png"
-            alt="A black pickup truck loaded with moving boxes in dramatic low light"
-            className="h-full w-full object-cover"
+            src="/images/hero-banner.png"
+            alt="Dude With A Truck — real people, real trucks, real help. Three crew members in front of a pickup truck at sunset."
+            width={1024}
+            height={1536}
+            className="block h-auto w-full"
+            fetchPriority="high"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/30" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/60" />
-        </div>
-
-        <div className="mx-auto flex min-h-screen max-w-7xl flex-col items-center justify-center px-6 pt-28 pb-16 text-center lg:items-start lg:px-8 lg:text-left">
-          {/* Stars */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1" aria-hidden="true">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} className="size-4 fill-primary text-primary" />
-              ))}
-            </div>
-            <p className="font-heading text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              4.9 &middot; 2,400+ Moves Done Right
-            </p>
-          </div>
-
-          {/* Headline */}
-          <h1 className="font-heading mt-6 max-w-4xl text-balance text-5xl font-bold uppercase leading-[0.92] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
-            Find a <span className="text-primary">Dude With A Truck</span> Near You.
-          </h1>
-
-          {/* Subheadline */}
-          <p
-            className="mx-auto mt-7 max-w-xl text-pretty text-lg leading-relaxed lg:mx-0"
-            style={{ color: "#ededed" }}
-          >
-            Browse local truck owners across your metro area for moving, hauling, pickups,
-            deliveries and more.
-          </p>
-
-          {/* CTAs */}
-          <div className="mt-9 flex w-full flex-col items-center gap-4 sm:w-auto sm:flex-row">
-            <button
-              onClick={() => setRequestOpen(true)}
-              className="font-heading inline-flex h-13 items-center gap-2 rounded-lg bg-primary px-7 text-base font-semibold uppercase tracking-wide text-primary-foreground transition-colors hover:bg-primary/80 active:scale-[0.97]"
-            >
-              Find a Dude Near You
-              <ArrowRight className="size-5" aria-hidden="true" />
-            </button>
-            <a
-              href="#pricing"
-              className="font-heading inline-flex h-13 items-center rounded-lg border border-border bg-transparent px-7 text-base font-semibold uppercase tracking-wide text-foreground transition-colors hover:bg-secondary"
-            >
-              List My Truck
-            </a>
-          </div>
+          <button
+            type="button"
+            onClick={() => setRequestOpen(true)}
+            aria-label="Find a Dude Near You"
+            className="absolute left-1/2 top-[34.8%] h-[5%] min-h-11 w-[78%] max-w-sm -translate-x-1/2 cursor-pointer rounded-xl bg-transparent transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          />
         </div>
       </section>
 
