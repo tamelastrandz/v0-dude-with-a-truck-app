@@ -7,6 +7,7 @@
  * Auth modals (Login / Driver Signup / Customer Request) are layered on top.
  */
 
+
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { Hero } from "@/components/sections/Hero";
 import { StatsBar } from "@/components/sections/StatsBar";
@@ -17,14 +18,16 @@ import { Pricing } from "@/components/sections/Pricing";
 import { CtaFooter } from "@/components/sections/CtaFooter";
 import { useReferralCode } from "@/hooks/useReferralCode";
 
+
 export default function Home() {
   // Capture ?ref= param and persist to sessionStorage so it survives
   // navigation before the driver completes signup.
   useReferralCode();
 
+
   return (
     <main className="bg-background">
-      <SiteHeader />
+      <SiteHeader overlay={false} />
       <Hero />
       <FeaturedDudes />
       <StatsBar />
@@ -35,3 +38,4 @@ export default function Home() {
     </main>
   );
 }
+
