@@ -15,7 +15,7 @@ export function Hero() {
       <section className="relative isolate overflow-hidden">
         <div className="absolute inset-0 -z-10">
           <img
-            src="/manus-storage/hero-truck_af30dc9d.png"
+            src="/images/hero-truck.png"
             alt="A black pickup truck loaded with moving boxes in dramatic low light"
             className="h-full w-full object-cover"
           />
