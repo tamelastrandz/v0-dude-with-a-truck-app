@@ -73,7 +73,7 @@ export function HowItWorks() {
         <div className="relative">
           <div className="overflow-hidden rounded-xl border border-border">
             <img
-              src="/manus-storage/how-it-works_d590031d.png"
+              src="/images/how-it-works.png"
               alt="A vetted dude carefully moving a wooden dresser"
               className="aspect-[4/5] w-full object-cover lg:aspect-auto lg:h-full"
             />
