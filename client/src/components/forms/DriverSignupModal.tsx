@@ -31,7 +31,7 @@ import {
   DRIVER_TAGLINE_EXAMPLES,
 } from "@/lib/truckData";
 import { toast } from "sonner";
-import { useLocation } from "wouter";
+
 
 interface DriverSignupModalProps {
   open: boolean;
@@ -61,7 +61,6 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
   const [bio, setBio] = useState("");
 
   const { signIn } = useAuth();
-  const [, navigate] = useLocation();
 
   if (!open) return null;
 
@@ -167,6 +166,7 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
       clearStoredReferralCode();
 
       // 6. Launch Stripe Checkout for the selected subscription plan.
+      //    This redirects the browser to Stripe; the page will leave here.
       //    The webhook (invoice.paid) will activate the subscription in Supabase
       //    after the driver completes payment.
       toast.success("Account created! Redirecting to secure payment…");
@@ -178,9 +178,8 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
         fullName,
         planKey: plan,
       });
-
-      // Navigate to dashboard — subscription will be activated by the webhook
-      navigate("/dashboard");
+      // Note: no navigate() here — startStripeCheckout sets window.location.href
+      // so the browser leaves this page and goes to Stripe Checkout.
     } catch (err) {
       console.error("[DriverSignup] Unexpected error:", err);
       toast.error("Something went wrong. Please try again.");
