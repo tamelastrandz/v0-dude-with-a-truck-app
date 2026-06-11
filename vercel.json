@@ -5,6 +5,10 @@
   "framework": null,
   "rewrites": [
     {
+      "source": "/api/stripe/:path*",
+      "destination": "/api/stripe/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
