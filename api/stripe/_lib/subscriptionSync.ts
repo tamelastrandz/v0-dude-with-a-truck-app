@@ -5,7 +5,7 @@ import {
   PLANS,
   type PlanKey,
   isValidPlanKey,
-} from "./plans";
+} from "./plans.js";
 
 function addDays(date: Date, days: number): Date {
   const result = new Date(date);

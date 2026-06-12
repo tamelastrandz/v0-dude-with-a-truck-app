@@ -5,7 +5,7 @@ import {
   getSupabaseAdmin,
   upsertSubscriptionFromCheckout,
   type PlanKey,
-} from "./_lib/subscriptionSync";
+} from "./_lib/subscriptionSync.js";
 
 export const config = {
   api: {

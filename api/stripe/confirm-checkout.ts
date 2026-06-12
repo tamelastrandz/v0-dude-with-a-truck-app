@@ -7,7 +7,7 @@ import {
   findPaidCheckoutSession,
   getStripe,
   syncSubscriptionFromSession,
-} from "./_lib/subscriptionSync";
+} from "./_lib/subscriptionSync.js";
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {

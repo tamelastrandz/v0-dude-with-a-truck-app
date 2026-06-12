@@ -1,5 +1,5 @@
-import { FOUNDERS_ANNUAL_LIMIT } from "./_lib/plans";
-import { countFoundersAnnualSubscriptions } from "./_lib/subscriptionSync";
+import { FOUNDERS_ANNUAL_LIMIT } from "./_lib/plans.js";
+import { countFoundersAnnualSubscriptions } from "./_lib/subscriptionSync.js";
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "GET") {
