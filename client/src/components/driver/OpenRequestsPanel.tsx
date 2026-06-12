@@ -1,14 +1,14 @@
 /**
- * OpenRequestsPanel — Browse & Claim open move requests.
+ * OpenRequestsPanel â Browse & Claim open move requests.
  *
  * Features:
  *  - Lists all move_requests with status "new" or "matched"
  *  - Filter by urgency and search by city / item description
  *  - Sort by newest, urgency, or city
  *  - "Claim Job" button opens a quote modal
- *  - Quote modal lets the driver enter a price; shows the 15% platform fee
+ *  - Quote modal lets the driver enter a price; shows the 30% platform fee
  *    and their net payout before confirming
- *  - On confirm, calls claimRequest() → creates booking + marks request "booked"
+ *  - On confirm, calls claimRequest() â creates booking + marks request "booked"
  *  - Success state shows booking confirmation card
  *  - Real-time refresh: re-fetches every 30 s so the list stays current
  */
@@ -32,6 +32,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { getOpenRequests, claimRequest } from "@/lib/db";
+import { calcDriverPayout, calcPlatformFee } from "../../../shared/const";
 import type { MoveRequest, RequestUrgency } from "@/lib/database.types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ import { cn } from "@/lib/utils";
 
 interface OpenRequestsPanelProps {
   driverId: string;
+  onJobClaimed?: () => void;
 }
 
 type SortKey = "newest" | "urgency" | "city";
@@ -85,8 +87,8 @@ function ClaimModal({ request, driverId, onSuccess, onClose }: ClaimModalProps) 
   }, []);
 
   const numericPrice = parseFloat(price) || 0;
-  const platformFee = Math.round(numericPrice * 0.15 * 100) / 100;
-  const driverPayout = Math.round((numericPrice - platformFee) * 100) / 100;
+  const platformFee = calcPlatformFee(numericPrice);
+  const driverPayout = calcDriverPayout(numericPrice);
   const isValid = numericPrice >= 1;
 
   const handleConfirm = async () => {
@@ -124,7 +126,7 @@ function ClaimModal({ request, driverId, onSuccess, onClose }: ClaimModalProps) 
               {confirmed ? "Job Claimed!" : "Claim This Job"}
             </p>
             <h3 className="font-heading mt-1 text-xl font-bold uppercase tracking-tight text-foreground">
-              {request.pickup_city} → {request.dropoff_city}
+              {request.pickup_city} â {request.dropoff_city}
             </h3>
           </div>
           {!confirmed && (
@@ -160,7 +162,7 @@ function ClaimModal({ request, driverId, onSuccess, onClose }: ClaimModalProps) 
                 </div>
                 <div className="mt-2 flex justify-between text-sm">
                   <span className="text-muted-foreground">Platform fee (15%)</span>
-                  <span className="text-muted-foreground">−${platformFee.toFixed(2)}</span>
+                  <span className="text-muted-foreground">â${platformFee.toFixed(2)}</span>
                 </div>
                 <div className="mt-2 flex justify-between border-t border-border pt-2 text-sm font-bold">
                   <span className="text-foreground">Your payout</span>
@@ -183,7 +185,7 @@ function ClaimModal({ request, driverId, onSuccess, onClose }: ClaimModalProps) 
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <MapPin className="size-3" />
-                    {request.pickup_city} ({request.pickup_zip}) → {request.dropoff_city} ({request.dropoff_zip})
+                    {request.pickup_city} ({request.pickup_zip}) â {request.dropoff_city} ({request.dropoff_zip})
                   </span>
                   <span className="flex items-center gap-1">
                     <Zap className="size-3" />
@@ -224,7 +226,7 @@ function ClaimModal({ request, driverId, onSuccess, onClose }: ClaimModalProps) 
                 </div>
               </div>
 
-              {/* Payout breakdown — shown once a valid price is entered */}
+              {/* Payout breakdown â shown once a valid price is entered */}
               {isValid && (
                 <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
                   <p className="font-heading text-xs font-semibold uppercase tracking-widest text-primary">
@@ -237,7 +239,7 @@ function ClaimModal({ request, driverId, onSuccess, onClose }: ClaimModalProps) 
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Platform fee (15%)</span>
-                      <span className="text-muted-foreground">−${platformFee.toFixed(2)}</span>
+                      <span className="text-muted-foreground">â${platformFee.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between border-t border-border pt-2 font-bold">
                       <span className="text-foreground">Your payout</span>
@@ -262,7 +264,7 @@ function ClaimModal({ request, driverId, onSuccess, onClose }: ClaimModalProps) 
                   disabled={!isValid || loading}
                   className="font-heading flex-1 rounded-lg bg-primary py-2.5 text-sm font-semibold uppercase tracking-wide text-primary-foreground hover:bg-primary/80 disabled:opacity-40"
                 >
-                  {loading ? "Claiming…" : "Confirm & Claim"}
+                  {loading ? "Claimingâ¦" : "Confirm & Claim"}
                 </button>
               </div>
             </div>
@@ -300,12 +302,12 @@ function RequestCard({ request, onClaim, claimed }: RequestCardProps) {
             <MapPin className="size-4 shrink-0 text-primary" />
             <span className="truncate">
               {request.pickup_city}
-              <span className="mx-1 text-muted-foreground">→</span>
+              <span className="mx-1 text-muted-foreground">â</span>
               {request.dropoff_city}
             </span>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {request.pickup_zip} → {request.dropoff_zip}
+            {request.pickup_zip} â {request.dropoff_zip}
           </p>
         </div>
         <span
@@ -379,7 +381,7 @@ function RequestCard({ request, onClaim, claimed }: RequestCardProps) {
 
 // ---- Main Panel ----
 
-export function OpenRequestsPanel({ driverId }: OpenRequestsPanelProps) {
+export function OpenRequestsPanel({ driverId, onJobClaimed }: OpenRequestsPanelProps) {
   const [requests, setRequests] = useState<MoveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -415,7 +417,8 @@ export function OpenRequestsPanel({ driverId }: OpenRequestsPanelProps) {
 
   const handleClaimSuccess = (requestId: string) => {
     setClaimedIds((prev) => new Set(prev).add(requestId));
-    toast.success("Job claimed! Check your Bookings tab.");
+    onJobClaimed?.();
+    toast.success("Job claimed! See Active Jobs.");
   };
 
   // ---- Filtering & sorting ----
@@ -460,7 +463,7 @@ export function OpenRequestsPanel({ driverId }: OpenRequestsPanelProps) {
               Open Requests
             </h2>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              {loading ? "Loading…" : `${filtered.length} available job${filtered.length !== 1 ? "s" : ""}`}
+              {loading ? "Loadingâ¦" : `${filtered.length} available job${filtered.length !== 1 ? "s" : ""}`}
               {requests.length > 0 && filtered.length !== requests.length && (
                 <span className="ml-1 text-muted-foreground/60">
                   (filtered from {requests.length})
@@ -487,7 +490,7 @@ export function OpenRequestsPanel({ driverId }: OpenRequestsPanelProps) {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by city, ZIP, or item…"
+              placeholder="Search by city, ZIP, or itemâ¦"
               className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
             {search && (
@@ -585,7 +588,7 @@ export function OpenRequestsPanel({ driverId }: OpenRequestsPanelProps) {
               <p className="mt-1 text-sm text-muted-foreground">
                 {search || urgencyFilter !== "all"
                   ? "Try adjusting your filters or search terms."
-                  : "Check back soon — new requests come in throughout the day."}
+                  : "Check back soon â new requests come in throughout the day."}
               </p>
             </div>
             {(search || urgencyFilter !== "all") && (
