@@ -1,31 +1,26 @@
 /*
- * Design System — Dude With A Truck
+ * Design System â Dude With A Truck
  *
  * Design Movement: Industrial Dark / Bold Americana
  * Core Principles:
  *   1. Dark, high-contrast backgrounds with electric-blue accents
- *   2. Oswald (condensed, bold) for headings — all-caps, tight tracking
- *   3. Geist Sans for body copy — clean, readable
+ *   2. Oswald (condensed, bold) for headings â all-caps, tight tracking
+ *   3. Geist Sans for body copy â clean, readable
  *   4. Asymmetric layouts with full-bleed hero imagery
- * Color Philosophy: Warm dark backgrounds (#2A2523) with vivid blue primary
+ * Color Philosophy: Near-black backgrounds with vivid blue primary
  *   to evoke a professional, trustworthy, working-class energy
  */
-
 
 @import "tailwindcss";
 @import "tw-animate-css";
 
-
 @custom-variant dark (&:is(.dark *));
 
-
 /* Google Fonts loaded via client/index.html */
-
 
 @theme inline {
   --font-heading: "Oswald", "Oswald Fallback", sans-serif;
   --font-sans: "Geist", "Geist Fallback", system-ui, sans-serif;
-
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -34,7 +29,6 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -70,26 +64,19 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-
-/* ---- Dark theme (default) — matches original v0 design ---- */
+/* ---- Dark theme (default) â matches original v0 design ---- */
 :root {
-  --background: #2A2523;
-
-}
-
-/* ---- Dark theme (default) — matches original v0 design ---- */
-:root {
-  --background: #2A2523;
+  --background: oklch(0.12 0.005 260);
   --foreground: oklch(0.98 0 0);
-  --card: #332E2B;
+  --card: oklch(0.16 0.006 260);
   --card-foreground: oklch(0.98 0 0);
-  --popover: #332E2B;
+  --popover: oklch(0.16 0.006 260);
   --popover-foreground: oklch(0.98 0 0);
   --primary: oklch(0.58 0.2 256);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: #3A3532;
+  --secondary: oklch(0.22 0.006 260);
   --secondary-foreground: oklch(0.98 0 0);
-  --muted: #3A3532;
+  --muted: oklch(0.22 0.006 260);
   --muted-foreground: oklch(0.68 0.01 260);
   --accent: oklch(0.58 0.2 256);
   --accent-foreground: oklch(0.99 0 0);
@@ -104,11 +91,11 @@
   --chart-4: oklch(0.72 0.12 245);
   --chart-5: oklch(0.4 0.12 262);
   --radius: 0.5rem;
-  --sidebar: #332E2B;
+  --sidebar: oklch(0.16 0.006 260);
   --sidebar-foreground: oklch(0.98 0 0);
   --sidebar-primary: oklch(0.58 0.2 256);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: #3A3532;
+  --sidebar-accent: oklch(0.22 0.006 260);
   --sidebar-accent-foreground: oklch(0.98 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.58 0.2 256);
