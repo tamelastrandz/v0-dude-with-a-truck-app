@@ -445,6 +445,25 @@ export async function signUpAffiliate(opts: {
   const userId = signUpData.user?.id;
   if (!userId) return { userId: null, referralCode: null, error: new Error("No user ID returned.") };
 
+  // Ensure authenticated session exists for RLS-protected affiliate insert
+  if (!signUpData.session) {
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: opts.email,
+      password: opts.password,
+    });
+    if (signInError) {
+      return {
+        userId,
+        referralCode: null,
+        error: new Error(
+          signInError.message.includes("Email not confirmed")
+            ? "Please confirm your email, then sign in to finish affiliate setup."
+            : signInError.message
+        ),
+      };
+    }
+  }
+
   // 2. Ensure profile role is set to affiliate (trigger may have already done this)
   await (supabase.from("profiles") as any)
     .update({ role: "affiliate", phone: opts.phone ?? null })
