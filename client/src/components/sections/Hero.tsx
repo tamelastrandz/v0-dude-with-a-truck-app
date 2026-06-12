@@ -17,7 +17,7 @@ export function Hero() {
         className="group relative mx-auto block w-full max-w-md cursor-pointer border-0 bg-transparent p-0 sm:max-w-lg md:max-w-xl lg:max-w-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <img
-          src="/images/hero-banner.png"
+          src="/images/Dude hero.png"
           alt="Dude With A Truck — real people, real trucks, real help. Three crew members in front of a pickup truck at sunset."
           width={1024}
           height={1536}
