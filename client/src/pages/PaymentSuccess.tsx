@@ -26,6 +26,10 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { clearPendingCheckout } from "@/lib/pendingCheckout";
+import {
+  clearCheckoutSessionId,
+  storeCheckoutSessionId,
+} from "@/lib/checkoutSession";
 import type { PlanKey } from "@/lib/planTypes";
 
 const PLAN_DETAILS: Record<PlanKey, { label: string; price: string; trialNote: string | null; bonusNote: string | null }> = {
@@ -111,6 +115,13 @@ export default function PaymentSuccess() {
   const planKey = (params.get("plan") ?? "founders") as PlanKey;
   const sessionId = params.get("session_id");
   const plan = PLAN_DETAILS[planKey] ?? PLAN_DETAILS.founders;
+  const profileSetupHref = sessionId
+    ? `/dashboard?setup=profile&session_id=${encodeURIComponent(sessionId)}`
+    : "/dashboard?setup=profile";
+
+  useEffect(() => {
+    if (sessionId) storeCheckoutSessionId(sessionId);
+  }, [sessionId]);
 
   // Activate subscription in Supabase after Stripe payment
   useEffect(() => {
@@ -131,6 +142,7 @@ export default function PaymentSuccess() {
           if (!cancelled) {
             setSyncOk(true);
             clearPendingCheckout();
+            clearCheckoutSessionId();
           }
         } else {
           const body = await res.json().catch(() => ({}));
@@ -158,7 +170,7 @@ export default function PaymentSuccess() {
       setRedirectIn((n) => {
         if (n === null || n <= 1) {
           clearInterval(interval);
-          navigate("/dashboard?setup=profile");
+          navigate(profileSetupHref);
           return 0;
         }
         return n - 1;
@@ -166,7 +178,7 @@ export default function PaymentSuccess() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [syncing, syncOk, navigate]);
+  }, [syncing, syncOk, navigate, profileSetupHref]);
 
   // Trigger confetti animation on mount
   useEffect(() => {
@@ -211,7 +223,7 @@ export default function PaymentSuccess() {
             </span>
           </a>
           <a
-            href="/dashboard?setup=profile"
+            href={profileSetupHref}
             className="font-heading inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold uppercase tracking-wide text-primary-foreground hover:bg-primary/80 transition-colors"
           >
             <LayoutDashboard className="size-4" />
@@ -314,7 +326,11 @@ export default function PaymentSuccess() {
                   </p>
                   {step.cta && step.href && (
                     <a
-                      href={step.href}
+                      href={
+                        step.href === "/dashboard?setup=profile"
+                          ? profileSetupHref
+                          : step.href
+                      }
                       className="font-heading mt-3 inline-flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-primary hover:underline"
                     >
                       {step.cta}
@@ -337,7 +353,7 @@ export default function PaymentSuccess() {
             Your dashboard is live. Browse open requests and claim your first job today.
           </p>
           <a
-            href="/dashboard?setup=profile"
+            href={profileSetupHref}
             className="font-heading inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-7 text-sm font-semibold uppercase tracking-wide text-primary-foreground hover:bg-primary/80 transition-colors active:scale-[0.97]"
           >
             Complete My Profile

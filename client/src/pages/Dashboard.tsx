@@ -39,6 +39,10 @@ import { DriverProfileSetup } from "@/components/driver/DriverProfileSetup";
 import { ConversationPanel } from "@/components/messaging/ConversationPanel";
 import { startStripeCheckout } from "@/lib/stripeCheckout";
 import { getPendingCheckout, storePendingCheckout } from "@/lib/pendingCheckout";
+import {
+  clearCheckoutSessionId,
+  getCheckoutSessionIdFromUrl,
+} from "@/lib/checkoutSession";
 import { getPlanDisplayPrice, type PlanKey } from "@/lib/planTypes";
 import type { MoveRequest, Subscription, Affiliate, AffiliatePayout, Booking } from "@/lib/database.types";
 import { toast } from "sonner";
@@ -55,6 +59,7 @@ export default function Dashboard() {
   const [, navigate] = useLocation();
   const search = useSearch();
   const setupProfile = new URLSearchParams(search).get("setup") === "profile";
+  const checkoutSessionId = getCheckoutSessionIdFromUrl(search);
 
   // Data states
   const [requests, setRequests] = useState<MoveRequest[]>([]);
@@ -109,10 +114,12 @@ export default function Dashboard() {
                 body: JSON.stringify({
                   userId: user.id,
                   email: profile.email,
+                  sessionId: checkoutSessionId ?? undefined,
                 }),
               });
               if (syncRes.ok) {
                 subRes = await getUserSubscription(user.id);
+                clearCheckoutSessionId();
               }
             } catch (err) {
               console.error("[Dashboard] subscription sync failed:", err);
@@ -137,7 +144,7 @@ export default function Dashboard() {
     };
 
     loadData();
-  }, [user, profile]);
+  }, [user, profile, checkoutSessionId]);
 
   // Prompt profile setup after payment or when profile is incomplete
   useEffect(() => {
@@ -451,7 +458,11 @@ export default function Dashboard() {
         ================================================================ */}
         {profile.role === "driver" && (
           <div className="flex flex-col gap-6">
-            {!isActiveSubscription(subscription) ? (
+            {setupProfile && dataLoading ? (
+              <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
+                Activating your subscription…
+              </div>
+            ) : !isActiveSubscription(subscription) ? (
               <div className="rounded-xl border border-primary/30 bg-primary/5 p-8 text-center">
                 <Truck className="mx-auto size-12 text-primary" />
                 <h2 className="font-heading mt-4 text-2xl font-bold uppercase tracking-wide text-foreground">

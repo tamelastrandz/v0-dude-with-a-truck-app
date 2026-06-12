@@ -133,6 +133,40 @@ async function syncSubscriptionFromSession(session) {
   };
 }
 
+async function findPaidCheckoutSession(stripe, userId, email) {
+  const matchesSession = (session) => {
+    const sessionUserId =
+      session.metadata?.user_id || session.client_reference_id || null;
+    const sessionEmail =
+      session.customer_email || session.metadata?.customer_email || null;
+
+    const matchesUser =
+      sessionUserId === userId ||
+      (email && sessionEmail && sessionEmail.toLowerCase() === email.toLowerCase());
+
+    return (
+      matchesUser &&
+      session.mode === "subscription" &&
+      (session.payment_status === "paid" || session.status === "complete")
+    );
+  };
+
+  if (email) {
+    const customers = await stripe.customers.list({ email, limit: 5 });
+    for (const customer of customers.data) {
+      const sessions = await stripe.checkout.sessions.list({
+        customer: customer.id,
+        limit: 10,
+      });
+      const match = sessions.data.find(matchesSession);
+      if (match) return match;
+    }
+  }
+
+  const recentSessions = await stripe.checkout.sessions.list({ limit: 25 });
+  return recentSessions.data.find(matchesSession) || null;
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -145,12 +179,14 @@ module.exports = async function handler(req, res) {
 
     if (sessionId) {
       session = await stripe.checkout.sessions.retrieve(sessionId);
+    } else if (userId && email) {
+      session = await findPaidCheckoutSession(stripe, userId, email);
     } else {
-      return res.status(400).json({ error: "Provide sessionId." });
+      return res.status(400).json({ error: "Provide sessionId or userId and email." });
     }
 
     if (!session) {
-      return res.status(404).json({ error: "No checkout session found." });
+      return res.status(404).json({ error: "No paid checkout session found." });
     }
 
     const result = await syncSubscriptionFromSession(session);
