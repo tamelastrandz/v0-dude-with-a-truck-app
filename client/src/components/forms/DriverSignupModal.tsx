@@ -33,6 +33,7 @@ import {
 import { toast } from "sonner";
 import type { PlanKey } from "@/lib/planTypes";
 import { getPlanDisplayPrice, PLAN_LABELS } from "@/lib/planTypes";
+import { storePendingCheckout } from "@/lib/pendingCheckout";
 
 interface DriverSignupModalProps {
   open: boolean;
@@ -133,15 +134,22 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
         return;
       }
 
-      // 2. Update profile role to "driver" (the trigger sets it from metadata,
-      //    but we update explicitly to be safe)
+      // 2. Establish a session so RLS-protected writes succeed
+      if (!signUpData.session) {
+        const { error: signInError } = await signIn(email, password);
+        if (signInError) {
+          console.warn("[DriverSignup] Sign-in after signup:", signInError.message);
+        }
+      }
+
+      // 3. Update profile role to "driver"
       await (supabase
         .from("profiles") as any)
-        .update({ role: "driver", phone: phone || null })
+        .update({ role: "driver", phone: phone || null, full_name: fullName })
         .eq("id", userId);
 
-      // 3. Create driver profile
-      await upsertDriverProfile({
+      // 4. Create driver profile
+      const { error: driverProfileError } = await upsertDriverProfile({
         user_id: userId,
         truck_make: truckMake || null,
         truck_model: truckModel || null,
@@ -159,7 +167,11 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
         total_jobs: 0,
       });
 
-      // 4. Handle affiliate referral code (if provided)
+      if (driverProfileError) {
+        console.error("[DriverSignup] driver profile error:", driverProfileError.message);
+      }
+
+      // 5. Handle affiliate referral code (if provided)
       if (referralCode.trim()) {
         const { data: affiliate } = await getAffiliateByCode(referralCode.trim().toUpperCase());
         if (affiliate) {
@@ -167,16 +179,10 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
         }
       }
 
-      // 5. Sign in the new user
-      await signIn(email, password);
-
-      // Clear the referral code from sessionStorage after successful signup
       clearStoredReferralCode();
 
-      // 6. Launch Stripe Checkout for the selected subscription plan.
-      //    This redirects the browser to Stripe; the page will leave here.
-      //    The webhook (invoice.paid) will activate the subscription in Supabase
-      //    after the driver completes payment.
+      storePendingCheckout({ userId, email, fullName, planKey: plan });
+
       toast.success("Account created! Redirecting to secure payment…");
 
       await startStripeCheckout({
@@ -185,12 +191,17 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
         fullName,
         planKey: plan,
       });
-      handleClose();
       // Note: no navigate() here — startStripeCheckout sets window.location.href
       // so the browser leaves this page and goes to Stripe Checkout.
     } catch (err) {
       console.error("[DriverSignup] Unexpected error:", err);
-      toast.error(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      const message =
+        err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      toast.error(
+        `${message} If your account was created, sign in and complete payment from your dashboard.`
+      );
+      onClose();
+      window.location.assign("/dashboard");
     } finally {
       setLoading(false);
     }

@@ -23,12 +23,16 @@ export default async function handler(req: any, res: any) {
     }
 
     if (planKey === "founders_annual") {
-      const claimed = await countFoundersAnnualSubscriptions();
-      if (claimed >= FOUNDERS_ANNUAL_LIMIT) {
-        return res.status(409).json({
-          error: "All 50 Founders Annual spots have been claimed.",
-          soldOut: true,
-        });
+      try {
+        const claimed = await countFoundersAnnualSubscriptions();
+        if (claimed >= FOUNDERS_ANNUAL_LIMIT) {
+          return res.status(409).json({
+            error: "All 50 Founders Annual spots have been claimed.",
+            soldOut: true,
+          });
+        }
+      } catch (countErr) {
+        console.warn("[Stripe] founders spot count unavailable:", countErr);
       }
     }
 

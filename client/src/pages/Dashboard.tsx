@@ -38,6 +38,8 @@ import { OpenRequestsPanel } from "@/components/driver/OpenRequestsPanel";
 import { DriverProfileSetup } from "@/components/driver/DriverProfileSetup";
 import { ConversationPanel } from "@/components/messaging/ConversationPanel";
 import { startStripeCheckout } from "@/lib/stripeCheckout";
+import { getPendingCheckout, storePendingCheckout } from "@/lib/pendingCheckout";
+import { getPlanDisplayPrice, type PlanKey } from "@/lib/planTypes";
 import type { MoveRequest, Subscription, Affiliate, AffiliatePayout, Booking } from "@/lib/database.types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -63,6 +65,7 @@ export default function Dashboard() {
   const [dataLoading, setDataLoading] = useState(true);
   const [driverTab, setDriverTab] = useState<DriverTab>("requests");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<PlanKey>("standard");
   const [showProfileSetup, setShowProfileSetup] = useState(setupProfile);
   const [profileCheckDone, setProfileCheckDone] = useState(false);
   const [customerBookings, setCustomerBookings] = useState<any[]>([]);
@@ -160,6 +163,48 @@ export default function Dashboard() {
       setProfileCheckDone(true);
     });
   }, [user, profile?.role, subscription, setupProfile, dataLoading]);
+
+  // Resume the plan the driver picked at signup if payment didn't complete
+  useEffect(() => {
+    if (!user || isActiveSubscription(subscription)) return;
+    const pending = getPendingCheckout();
+    if (pending?.userId === user.id) {
+      setCheckoutPlan(pending.planKey);
+    }
+  }, [user, subscription]);
+
+  const checkoutPrice = getPlanDisplayPrice(checkoutPlan);
+  const checkoutCadence =
+    checkoutPlan === "founders_annual"
+      ? "annual Founders Annual membership"
+      : checkoutPlan === "founders"
+        ? "Founders Special subscription"
+        : "$29/month subscription";
+
+  const handleDriverCheckout = async () => {
+    if (!user || !profile) return;
+    setCheckoutLoading(true);
+    try {
+      storePendingCheckout({
+        userId: user.id,
+        email: profile.email,
+        fullName: profile.full_name ?? undefined,
+        planKey: checkoutPlan,
+      });
+      await startStripeCheckout({
+        userId: user.id,
+        email: profile.email,
+        fullName: profile.full_name ?? undefined,
+        planKey: checkoutPlan,
+      });
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Could not start checkout."
+      );
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
 
   const finishProfileSetup = () => {
     setShowProfileSetup(false);
@@ -413,32 +458,22 @@ export default function Dashboard() {
                   Activate Your Dude Profile
                 </h2>
                 <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-                  Complete your $29/month subscription to browse job requests, track active
+                  Complete your {checkoutCadence} to browse job requests, track active
                   hauls, and message customers in the app.
                 </p>
                 <button
                   type="button"
                   disabled={checkoutLoading}
-                  onClick={async () => {
-                    setCheckoutLoading(true);
-                    try {
-                      await startStripeCheckout({
-                        userId: user.id,
-                        email: profile.email,
-                        fullName: profile.full_name ?? undefined,
-                        planKey: "standard",
-                      });
-                    } catch (err) {
-                      toast.error(
-                        err instanceof Error ? err.message : "Could not start checkout."
-                      );
-                    } finally {
-                      setCheckoutLoading(false);
-                    }
-                  }}
+                  onClick={handleDriverCheckout}
                   className="font-heading mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-primary px-6 text-sm font-semibold uppercase tracking-wide text-primary-foreground hover:bg-primary/80 disabled:opacity-60"
                 >
-                  {checkoutLoading ? "Redirecting to checkout…" : "Subscribe — $29/mo"}
+                  {checkoutLoading
+                    ? "Redirecting to checkout…"
+                    : checkoutPlan === "founders_annual"
+                      ? `Complete payment — ${checkoutPrice}`
+                      : checkoutPlan === "founders"
+                        ? "Start trial — $14.50/mo"
+                        : "Subscribe — $29/mo"}
                 </button>
               </div>
             ) : showProfileSetup ? (

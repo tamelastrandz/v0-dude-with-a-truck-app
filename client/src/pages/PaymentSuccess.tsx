@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { clearPendingCheckout } from "@/lib/pendingCheckout";
 import type { PlanKey } from "@/lib/planTypes";
 
 const PLAN_DETAILS: Record<PlanKey, { label: string; price: string; trialNote: string | null; bonusNote: string | null }> = {
@@ -127,7 +128,10 @@ export default function PaymentSuccess() {
           }),
         });
         if (res.ok) {
-          if (!cancelled) setSyncOk(true);
+          if (!cancelled) {
+            setSyncOk(true);
+            clearPendingCheckout();
+          }
         } else {
           const body = await res.json().catch(() => ({}));
           console.error("[PaymentSuccess] subscription sync failed:", body.error);
