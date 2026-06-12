@@ -4,9 +4,10 @@
  */
 
 "use client";
-import { useMemo, useState } from "react";
-import { Star, Truck, MapPin, Search, Clock } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Star, Truck, MapPin, Search, Clock, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getFeaturedDrivers, type FeaturedDriver } from "@/lib/db";
 
 type Dude = {
   name: string;
@@ -18,6 +19,7 @@ type Dude = {
   startingPrice: number;
   available: boolean;
   img: string;
+  isFounder?: boolean;
 };
 
 type Metro = {
@@ -129,16 +131,48 @@ const metros: Metro[] = [
   },
 ];
 
+function featuredDriverToDude(driver: FeaturedDriver): Dude {
+  const fullName = driver.profiles?.full_name ?? "Founding Dude";
+  const truckParts = [driver.truck_make, driver.truck_model].filter(Boolean);
+  const truckLabel = truckParts.length
+    ? `${truckParts.join(" ")}${driver.truck_type ? ` · ${driver.truck_type}` : ""}`
+    : "Truck details coming soon";
+
+  return {
+    name: fullName.split(" ")[0] ?? fullName,
+    rating: driver.rating != null ? Number(driver.rating).toFixed(1) : "5.0",
+    truck: truckLabel,
+    area: driver.service_area ?? driver.profiles?.city ?? "Your Area",
+    zips: [],
+    distance: 0,
+    startingPrice: 65,
+    available: true,
+    img: driver.profile_photo_url ?? "/images/dude-marcus.png",
+    isFounder: true,
+  };
+}
+
 export function FeaturedDudes() {
   const [activeMetroId, setActiveMetroId] = useState(metros[0].id);
   const [activeArea, setActiveArea] = useState("All Areas");
   const [query, setQuery] = useState("");
+  const [founderDudes, setFounderDudes] = useState<Dude[]>([]);
+
+  useEffect(() => {
+    getFeaturedDrivers()
+      .then(({ data }) => {
+        setFounderDudes(data.map(featuredDriverToDude));
+      })
+      .catch(() => {
+        /* static crew still renders */
+      });
+  }, []);
 
   const activeMetro = metros.find((m) => m.id === activeMetroId) ?? metros[0];
 
   const filteredDudes = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return activeMetro.dudes.filter((dude) => {
+    const metroDudes = activeMetro.dudes.filter((dude) => {
       const matchesArea = activeArea === "All Areas" || dude.area === activeArea;
       const matchesQuery =
         q === "" ||
@@ -147,7 +181,31 @@ export function FeaturedDudes() {
         dude.name.toLowerCase().includes(q);
       return matchesArea && matchesQuery;
     });
-  }, [activeMetro, activeArea, query]);
+
+    const foundersInView = founderDudes.filter((dude) => {
+      const matchesQuery =
+        q === "" ||
+        dude.area.toLowerCase().includes(q) ||
+        dude.name.toLowerCase().includes(q);
+      const matchesArea =
+        activeArea === "All Areas" ||
+        dude.area === activeArea ||
+        activeMetro.areas.some((area) => dude.area.toLowerCase().includes(area.toLowerCase()));
+      return matchesQuery && matchesArea;
+    });
+
+    const seen = new Set<string>();
+    const merged: Dude[] = [];
+
+    for (const dude of [...foundersInView, ...metroDudes]) {
+      const key = `${dude.name}-${dude.area}-${dude.isFounder ? "founder" : "crew"}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(dude);
+    }
+
+    return merged.sort((a, b) => Number(b.isFounder) - Number(a.isFounder));
+  }, [activeMetro, activeArea, query, founderDudes]);
 
   function selectMetro(id: string) {
     setActiveMetroId(id);
@@ -243,9 +301,19 @@ export function FeaturedDudes() {
                     className="aspect-[3/4] w-full object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
-                  <div className="absolute left-4 top-4 flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1 text-primary-foreground">
-                    <Star className="size-3.5 fill-current" aria-hidden="true" />
-                    <span className="font-heading text-sm font-bold">{dude.rating}</span>
+                  <div className="absolute left-4 top-4 flex flex-col gap-2">
+                    <div className="flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1 text-primary-foreground">
+                      <Star className="size-3.5 fill-current" aria-hidden="true" />
+                      <span className="font-heading text-sm font-bold">{dude.rating}</span>
+                    </div>
+                    {dude.isFounder && (
+                      <div className="flex items-center gap-1.5 rounded-md bg-amber-400 px-2.5 py-1 text-amber-950">
+                        <Sparkles className="size-3.5" aria-hidden="true" />
+                        <span className="font-heading text-xs font-bold uppercase tracking-wide">
+                          Founding Dude
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div
                     className={cn(

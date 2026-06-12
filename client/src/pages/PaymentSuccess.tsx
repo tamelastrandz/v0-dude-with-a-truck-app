@@ -27,16 +27,25 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import type { PlanKey } from "@/lib/planTypes";
 
-const PLAN_DETAILS: Record<PlanKey, { label: string; price: string; trialNote: string | null }> = {
+const PLAN_DETAILS: Record<PlanKey, { label: string; price: string; trialNote: string | null; bonusNote: string | null }> = {
   founders: {
     label: "Founders Special",
     price: "$14.50/month",
     trialNote: "Your 30-day free trial is active. You won't be charged until the trial ends.",
+    bonusNote: null,
   },
   standard: {
     label: "Standard Plan",
     price: "$29.00/month",
     trialNote: null,
+    bonusNote: null,
+  },
+  founders_annual: {
+    label: "Founders Annual",
+    price: "$299.00/year",
+    trialNote: null,
+    bonusNote:
+      "You're one of our founding dudes! Your profile gets priority placement on the homepage for the next 12 months, and you'll be featured in our next driver email blast.",
   },
 };
 
@@ -218,6 +227,11 @@ export default function PaymentSuccess() {
             {plan.trialNote && (
               <p className="mt-3 rounded-md border border-green-400/20 bg-green-400/5 px-3 py-2 text-xs leading-relaxed text-green-400">
                 {plan.trialNote}
+              </p>
+            )}
+            {plan.bonusNote && (
+              <p className="mt-3 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs leading-relaxed text-primary">
+                {plan.bonusNote}
               </p>
             )}
           </div>

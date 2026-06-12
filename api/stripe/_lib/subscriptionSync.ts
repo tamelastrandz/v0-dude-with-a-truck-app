@@ -1,26 +1,19 @@
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
-
-export const PLANS = {
-  founders: {
-    name: "Founders Special",
-    monthlyPriceCents: 1450,
-    trialDays: 30,
-  },
-  standard: {
-    name: "Standard",
-    monthlyPriceCents: 2900,
-    trialDays: 0,
-  },
-} as const;
-
-export type PlanKey = keyof typeof PLANS;
+import {
+  FOUNDERS_ANNUAL_LIMIT,
+  PLANS,
+  type PlanKey,
+  isValidPlanKey,
+} from "../../../shared/plans";
 
 function addDays(date: Date, days: number): Date {
   const result = new Date(date);
   result.setDate(result.getDate() + days);
   return result;
 }
+
+export { PLANS, type PlanKey, isValidPlanKey, FOUNDERS_ANNUAL_LIMIT };
 
 export function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY as string);
@@ -33,6 +26,37 @@ export function getSupabaseAdmin() {
   );
 }
 
+export async function countFoundersAnnualSubscriptions() {
+  const supabaseAdmin = getSupabaseAdmin();
+  const { count, error } = await supabaseAdmin
+    .from("subscriptions")
+    .select("*", { count: "exact", head: true })
+    .eq("plan_key", "founders_annual")
+    .in("status", ["active", "trialing"]);
+
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+async function activateFoundersAnnualFeatures(userId: string) {
+  const supabaseAdmin = getSupabaseAdmin();
+  const claimed = await countFoundersAnnualSubscriptions();
+  const featuredUntil = addDays(new Date(), PLANS.founders_annual.featuredDurationDays ?? 365);
+
+  const { error } = await supabaseAdmin
+    .from("driver_profiles")
+    .update({
+      is_featured: true,
+      featured_until: featuredUntil.toISOString(),
+      featured_sort: claimed,
+    })
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("[SubscriptionSync] featured activation error:", error.message);
+  }
+}
+
 export async function upsertSubscriptionFromCheckout(
   userId: string,
   planKey: PlanKey,
@@ -43,11 +67,14 @@ export async function upsertSubscriptionFromCheckout(
   const now = new Date();
   const status = plan.trialDays > 0 ? "trialing" : "active";
   const supabaseAdmin = getSupabaseAdmin();
+  const periodDays = plan.billingInterval === "year" ? 365 : 30;
 
   const payload = {
     user_id: userId,
+    plan_key: planKey,
     plan_name: plan.name,
-    monthly_price: plan.monthlyPriceCents / 100,
+    billing_interval: plan.billingInterval,
+    monthly_price: plan.priceCents / 100,
     status,
     stripe_customer_id: stripeCustomerId,
     stripe_subscription_id: stripeSubscriptionId,
@@ -58,7 +85,7 @@ export async function upsertSubscriptionFromCheckout(
         }
       : {
           current_period_start: now.toISOString(),
-          current_period_end: addDays(now, 30).toISOString(),
+          current_period_end: addDays(now, periodDays).toISOString(),
         }),
   };
 
@@ -74,11 +101,21 @@ export async function upsertSubscriptionFromCheckout(
       .update(payload)
       .eq("id", existing.id);
     if (error) throw new Error(error.message);
-    return;
+  } else {
+    if (planKey === "founders_annual") {
+      const claimed = await countFoundersAnnualSubscriptions();
+      if (claimed >= FOUNDERS_ANNUAL_LIMIT) {
+        throw new Error("All 50 Founders Annual spots have been claimed.");
+      }
+    }
+
+    const { error } = await supabaseAdmin.from("subscriptions").insert(payload);
+    if (error) throw new Error(error.message);
   }
 
-  const { error } = await supabaseAdmin.from("subscriptions").insert(payload);
-  if (error) throw new Error(error.message);
+  if (planKey === "founders_annual" && plan.featuredOnHomepage) {
+    await activateFoundersAnnualFeatures(userId);
+  }
 }
 
 export async function syncSubscriptionFromSession(session: Stripe.Checkout.Session) {
@@ -95,7 +132,8 @@ export async function syncSubscriptionFromSession(session: Stripe.Checkout.Sessi
     throw new Error("Checkout session is missing user_id.");
   }
 
-  const planKey = (session.metadata?.plan_key ?? "standard") as PlanKey;
+  const rawPlanKey = session.metadata?.plan_key ?? "standard";
+  const planKey: PlanKey = isValidPlanKey(rawPlanKey) ? rawPlanKey : "standard";
   const stripeCustomerId =
     typeof session.customer === "string" ? session.customer : null;
   const stripeSubscriptionId =
@@ -147,4 +185,52 @@ export async function findPaidCheckoutSession(
 
   const recentSessions = await stripe.checkout.sessions.list({ limit: 25 });
   return recentSessions.data.find(matchesSession) ?? null;
+}
+
+export function buildCheckoutSessionParams(
+  planKey: PlanKey,
+  userId: string,
+  email: string,
+  fullName: string | undefined,
+  origin: string
+): Stripe.Checkout.SessionCreateParams {
+  const plan = PLANS[planKey];
+
+  return {
+    mode: "subscription",
+    payment_method_types: ["card"],
+    customer_email: email,
+    allow_promotion_codes: true,
+    client_reference_id: userId,
+    metadata: {
+      user_id: userId,
+      customer_email: email,
+      customer_name: fullName ?? "",
+      plan_key: planKey,
+      plan_name: plan.name,
+    },
+    line_items: [
+      {
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: `Dude With A Truck — ${plan.name}`,
+            description: plan.description,
+          },
+          unit_amount: plan.priceCents,
+          recurring: { interval: plan.billingInterval },
+        },
+        quantity: 1,
+      },
+    ],
+    subscription_data:
+      plan.trialDays > 0
+        ? {
+            trial_period_days: plan.trialDays,
+            metadata: { user_id: userId, plan_key: planKey },
+          }
+        : { metadata: { user_id: userId, plan_key: planKey } },
+    success_url: `${origin}/payment-success?plan=${planKey}&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/#pricing`,
+  };
 }

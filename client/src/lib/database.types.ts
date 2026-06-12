@@ -47,6 +47,9 @@ export interface DriverProfile {
   profile_photo_url: string | null;
   is_verified: boolean;
   is_active: boolean;
+  is_featured: boolean;
+  featured_until: string | null;
+  featured_sort: number | null;
   rating: number | null;
   total_jobs: number | null;
   created_at: string;
@@ -56,7 +59,9 @@ export interface DriverProfile {
 export interface Subscription {
   id: string;
   user_id: string;
+  plan_key: string | null;
   plan_name: string;
+  billing_interval: "month" | "year";
   monthly_price: number;
   status: SubscriptionStatus;
   trial_start_date: string | null;

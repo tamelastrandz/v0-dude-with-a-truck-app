@@ -108,6 +108,25 @@ export async function listActiveDrivers() {
   return { data, error };
 }
 
+export type FeaturedDriver = DriverProfile & {
+  profiles: Pick<Profile, "full_name" | "city" | "state"> | null;
+};
+
+/** Founders Annual drivers with active homepage priority placement */
+export async function getFeaturedDrivers() {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("driver_profiles")
+    .select("*, profiles(full_name, city, state)")
+    .eq("is_featured", true)
+    .eq("is_active", true)
+    .gt("featured_until", now)
+    .order("featured_sort", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true });
+
+  return { data: (data ?? []) as FeaturedDriver[], error };
+}
+
 // ============================================================
 // SUBSCRIPTIONS
 // ============================================================

@@ -435,8 +435,16 @@ export default function Dashboard() {
                 {subscription && (
                   <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
                     <span className="font-semibold text-foreground">{subscription.plan_name}</span>
-                    {" · "}${subscription.monthly_price}/mo ·{" "}
+                    {" · "}$
+                    {subscription.monthly_price}
+                    {subscription.billing_interval === "year" ? "/yr" : "/mo"}
+                    {" · "}
                     <span className="uppercase">{subscription.status}</span>
+                    {subscription.plan_key === "founders_annual" && (
+                      <span className="ml-2 rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold uppercase text-amber-400">
+                        Homepage Priority
+                      </span>
+                    )}
                     {" · "}Platform fee on jobs: 30%
                   </div>
                 )}

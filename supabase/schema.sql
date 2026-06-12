@@ -80,6 +80,9 @@ CREATE TABLE IF NOT EXISTS public.driver_profiles (
   profile_photo_url   TEXT,
   is_verified         BOOLEAN NOT NULL DEFAULT FALSE,
   is_active           BOOLEAN NOT NULL DEFAULT TRUE,
+  is_featured         BOOLEAN NOT NULL DEFAULT FALSE,
+  featured_until      TIMESTAMPTZ,
+  featured_sort       INTEGER,
   rating              NUMERIC(3,2) DEFAULT 0.0,
   total_jobs          INTEGER DEFAULT 0,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -98,8 +101,11 @@ CREATE TRIGGER driver_profiles_updated_at
 CREATE TABLE IF NOT EXISTS public.subscriptions (
   id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id             UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  plan_name           TEXT NOT NULL,           -- "Founders Special" | "Standard"
-  monthly_price       NUMERIC(10,2) NOT NULL,  -- 14.50 | 29.00
+  plan_key            TEXT,
+  plan_name           TEXT NOT NULL,           -- "Founders Special" | "Standard" | "Founders Annual"
+  billing_interval    TEXT NOT NULL DEFAULT 'month'
+                        CHECK (billing_interval IN ('month', 'year')),
+  monthly_price       NUMERIC(10,2) NOT NULL,  -- per billing period (14.50 | 29.00 | 299.00)
   status              TEXT NOT NULL DEFAULT 'trialing'
                         CHECK (status IN ('trialing', 'active', 'past_due', 'canceled', 'paused')),
   trial_start_date    TIMESTAMPTZ,
@@ -425,6 +431,12 @@ CREATE POLICY "Admins can manage all payments"
 CREATE POLICY "Affiliates can view their own record"
   ON public.affiliates FOR SELECT USING (auth.uid() = user_id);
 
+CREATE POLICY "Users can create their own affiliate record"
+  ON public.affiliates FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Affiliates can update their own record"
+  ON public.affiliates FOR UPDATE USING (auth.uid() = user_id);
+
 CREATE POLICY "Admins can manage all affiliates"
   ON public.affiliates FOR ALL USING (public.is_admin());
 
@@ -433,6 +445,10 @@ CREATE POLICY "Affiliates can view their own referrals"
   ON public.affiliate_referrals FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.affiliates WHERE id = affiliate_id AND user_id = auth.uid())
   );
+
+CREATE POLICY "Drivers can record their own affiliate referral"
+  ON public.affiliate_referrals FOR INSERT
+  WITH CHECK (auth.uid() = referred_driver_id);
 
 CREATE POLICY "Admins can manage all referrals"
   ON public.affiliate_referrals FOR ALL USING (public.is_admin());
@@ -454,6 +470,8 @@ CREATE INDEX IF NOT EXISTS idx_driver_profiles_user_id ON public.driver_profiles
 CREATE INDEX IF NOT EXISTS idx_driver_profiles_is_active ON public.driver_profiles(is_active);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON public.subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON public.subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_plan_key ON public.subscriptions(plan_key) WHERE plan_key = 'founders_annual';
+CREATE INDEX IF NOT EXISTS idx_driver_profiles_featured ON public.driver_profiles(is_featured, featured_until) WHERE is_featured = TRUE;
 CREATE INDEX IF NOT EXISTS idx_move_requests_customer_id ON public.move_requests(customer_id);
 CREATE INDEX IF NOT EXISTS idx_move_requests_status ON public.move_requests(status);
 CREATE INDEX IF NOT EXISTS idx_bookings_request_id ON public.bookings(request_id);

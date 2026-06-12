@@ -19,7 +19,7 @@
 import type { Express, Request, Response } from "express";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
-import { PLANS, type PlanKey } from "./products";
+import { PLANS, type PlanKey, isValidPlanKey } from "./products";
 
 // ---- Stripe client ----
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", {
@@ -91,8 +91,8 @@ export function registerStripeRoutes(app: Express): void {
                 name: `Dude With A Truck — ${plan.name}`,
                 description: plan.description,
               },
-              unit_amount: plan.monthlyPriceCents,
-              recurring: { interval: "month" },
+              unit_amount: plan.priceCents,
+              recurring: { interval: plan.billingInterval },
             },
             quantity: 1,
           },
@@ -160,6 +160,7 @@ export function registerStripeRoutes(app: Express): void {
             const session = event.data.object as Stripe.Checkout.Session;
             const userId = session.metadata?.user_id ?? session.client_reference_id;
             const planKey = (session.metadata?.plan_key ?? "standard") as PlanKey;
+            if (!isValidPlanKey(planKey)) break;
             const stripeCustomerId =
               typeof session.customer === "string" ? session.customer : null;
             const stripeSubscriptionId =
@@ -231,6 +232,7 @@ async function handleCheckoutCompleted(
   const plan = PLANS[planKey];
   const now = new Date();
   const status = plan.trialDays > 0 ? "trialing" : "active";
+  const periodDays = plan.billingInterval === "year" ? 365 : 30;
 
   // Upsert the subscription row in Supabase
   const { error } = await supabaseAdmin
@@ -238,8 +240,10 @@ async function handleCheckoutCompleted(
     .upsert(
       {
         user_id: userId,
+        plan_key: planKey,
         plan_name: plan.name,
-        monthly_price: plan.monthlyPriceCents / 100,
+        billing_interval: plan.billingInterval,
+        monthly_price: plan.priceCents / 100,
         status,
         stripe_customer_id: stripeCustomerId,
         stripe_subscription_id: stripeSubscriptionId,
@@ -250,7 +254,7 @@ async function handleCheckoutCompleted(
             }
           : {
               current_period_start: now.toISOString(),
-              current_period_end: addDays(now, 30).toISOString(),
+              current_period_end: addDays(now, periodDays).toISOString(),
             }),
       },
       { onConflict: "user_id" }

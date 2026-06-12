@@ -31,12 +31,13 @@ import {
   DRIVER_TAGLINE_EXAMPLES,
 } from "@/lib/truckData";
 import { toast } from "sonner";
-
+import type { PlanKey } from "@/lib/planTypes";
+import { getPlanDisplayPrice, PLAN_LABELS } from "@/lib/planTypes";
 
 interface DriverSignupModalProps {
   open: boolean;
   onClose: () => void;
-  plan: "founders" | "standard";
+  plan: PlanKey;
 }
 
 export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProps) {
@@ -64,8 +65,15 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
 
   if (!open) return null;
 
-  const planLabel = plan === "founders" ? "Founders Special" : "Standard";
-  const planPrice = plan === "founders" ? "$14.50/mo (after 30-day free trial)" : "$29/mo";
+  const planLabel = PLAN_LABELS[plan];
+  const planPrice = getPlanDisplayPrice(plan);
+
+  const submitLabel =
+    plan === "founders"
+      ? "Start Free Trial → Payment"
+      : plan === "founders_annual"
+        ? "Claim Founders Spot → Payment"
+        : "Continue to Payment";
 
   const reset = () => {
     setStep(1);
@@ -347,6 +355,13 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
                     <li className="flex items-center gap-2"><Check className="size-3 text-primary" /> Then $14.50/month — locked in forever</li>
                     <li className="flex items-center gap-2"><Check className="size-3 text-primary" /> Cancel anytime before trial ends</li>
                   </ul>
+                ) : plan === "founders_annual" ? (
+                  <ul className="mt-2 flex flex-col gap-1 text-xs text-muted-foreground">
+                    <li className="flex items-center gap-2"><Check className="size-3 text-primary" /> $299/year, billed annually</li>
+                    <li className="flex items-center gap-2"><Check className="size-3 text-primary" /> Priority homepage placement for 1 year</li>
+                    <li className="flex items-center gap-2"><Check className="size-3 text-primary" /> Featured in our driver email blast</li>
+                    <li className="flex items-center gap-2"><Check className="size-3 text-primary" /> Only 50 founding spots available</li>
+                  </ul>
                 ) : (
                   <ul className="mt-2 flex flex-col gap-1 text-xs text-muted-foreground">
                     <li className="flex items-center gap-2"><Check className="size-3 text-primary" /> $29/month, billed monthly</li>
@@ -504,7 +519,7 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
                   disabled={loading}
                   className="font-heading inline-flex h-10 flex-1 items-center justify-center rounded-lg bg-primary text-sm font-semibold uppercase tracking-wide text-primary-foreground transition-colors hover:bg-primary/80 disabled:opacity-50"
                 >
-                  {loading ? "Creating Account…" : plan === "founders" ? "Start Free Trial → Payment" : "Continue to Payment"}
+                  {loading ? "Creating Account…" : submitLabel}
                 </button>
               </div>
 
