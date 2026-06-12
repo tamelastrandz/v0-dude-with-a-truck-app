@@ -23,6 +23,7 @@
  */
 
 import { supabase } from "./supabase";
+import { calcDriverPayout, calcPlatformFee } from "../../../shared/const";
 import type {
   Profile,
   DriverProfile,
@@ -219,6 +220,16 @@ export async function getCustomerRequests(customerId: string) {
   return { data: data as MoveRequest[] | null, error };
 }
 
+/** Get bookings for a customer (via their move requests), with driver info. */
+export async function getCustomerBookings(customerId: string) {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("*, move_requests!inner(*), profiles(full_name, email)")
+    .eq("move_requests.customer_id", customerId)
+    .order("created_at", { ascending: false });
+  return { data, error };
+}
+
 /** Get open requests visible to drivers */
 export async function getOpenRequests() {
   const { data, error } = await supabase
@@ -273,7 +284,7 @@ export async function getDriverBookings(driverId: string) {
  * Claim an open request: atomically creates a booking and marks the
  * move_request status as "booked".
  *
- * Platform fee is 15% of the quoted price.
+ * Platform fee is 30% of the quoted price.
  * Driver payout is quoted_price - platform_fee.
  *
  * @param requestId   - The move_request to claim
@@ -285,8 +296,8 @@ export async function claimRequest(
   driverId: string,
   quotedPrice: number
 ): Promise<{ booking: Booking | null; error: Error | null }> {
-  const platformFee = Math.round(quotedPrice * 0.15 * 100) / 100;
-  const driverPayout = Math.round((quotedPrice - platformFee) * 100) / 100;
+  const platformFee = calcPlatformFee(quotedPrice);
+  const driverPayout = calcDriverPayout(quotedPrice);
 
   // 1. Create the booking record
   const { data: booking, error: bookingError } = await (supabase
@@ -690,5 +701,59 @@ export async function adminListSubscriptions() {
     .from("subscriptions")
     .select("*, profiles(*)")
     .order("created_at", { ascending: false });
+  return { data, error };
+}
+
+// =============================================================================
+// Messaging (customer ↔ driver per booking)
+// =============================================================================
+
+/** Get or create a conversation thread for a booking. */
+export async function getOrCreateConversation(
+  bookingId: string,
+  customerId: string,
+  driverId: string
+) {
+  const { data: existing, error: findError } = await supabase
+    .from("conversations")
+    .select("*")
+    .eq("booking_id", bookingId)
+    .maybeSingle();
+
+  if (findError) return { data: null, error: findError };
+  if (existing) return { data: existing, error: null };
+
+  const { data, error } = await (supabase.from("conversations") as any)
+    .insert({ booking_id: bookingId, customer_id: customerId, driver_id: driverId })
+    .select()
+    .single();
+
+  return { data, error };
+}
+
+/** List messages in a conversation, oldest first. */
+export async function listConversationMessages(conversationId: string) {
+  const { data, error } = await supabase
+    .from("messages")
+    .select("*")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true });
+  return { data, error };
+}
+
+/** Send a message in a conversation. */
+export async function sendConversationMessage(
+  conversationId: string,
+  senderId: string,
+  body: string
+) {
+  const trimmed = body.trim();
+  if (!trimmed) return { data: null, error: new Error("Message cannot be empty.") };
+
+  const { data, error } = await (supabase.from("messages") as any)
+    .insert({ conversation_id: conversationId, sender_id: senderId, body: trimmed })
+    .select()
+    .single();
+
   return { data, error };
 }
