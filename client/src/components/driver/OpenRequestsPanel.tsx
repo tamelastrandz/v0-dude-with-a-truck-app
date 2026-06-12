@@ -32,7 +32,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { getOpenRequests, claimRequest } from "@/lib/db";
-import { calcDriverPayout, calcPlatformFee } from "../../../shared/const";
+import { calcDriverPayout, calcPlatformFee } from "@shared/const";
 import type { MoveRequest, RequestUrgency } from "@/lib/database.types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -161,7 +161,7 @@ function ClaimModal({ request, driverId, onSuccess, onClose }: ClaimModalProps) 
                   <span className="font-semibold text-foreground">${numericPrice.toFixed(2)}</span>
                 </div>
                 <div className="mt-2 flex justify-between text-sm">
-                  <span className="text-muted-foreground">Platform fee (15%)</span>
+                  <span className="text-muted-foreground">Platform fee (30%)</span>
                   <span className="text-muted-foreground">â${platformFee.toFixed(2)}</span>
                 </div>
                 <div className="mt-2 flex justify-between border-t border-border pt-2 text-sm font-bold">
@@ -238,7 +238,7 @@ function ClaimModal({ request, driverId, onSuccess, onClose }: ClaimModalProps) 
                       <span className="font-semibold text-foreground">${numericPrice.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Platform fee (15%)</span>
+                      <span className="text-muted-foreground">Platform fee (30%)</span>
                       <span className="text-muted-foreground">â${platformFee.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between border-t border-border pt-2 font-bold">
