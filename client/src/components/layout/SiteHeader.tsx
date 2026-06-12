@@ -90,11 +90,11 @@ export function SiteHeader({ overlay = true }: SiteHeaderProps) {
           {/* Desktop CTA / User menu */}
           <div className="hidden items-center gap-4 lg:flex">
             <a
-              href="tel:8005551234"
+              href="tel:+18557064191"
               className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               <Phone className="size-4" aria-hidden="true" />
-              (800) 555-1234
+              +1 855-706-4191
             </a>
 
             {user ? (

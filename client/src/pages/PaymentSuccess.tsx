@@ -89,9 +89,9 @@ const NEXT_STEPS = [
   {
     icon: Phone,
     title: "Questions? We're Here.",
-    desc: "Call or text us at (800) 555-1234 — our driver support team is available 7 days a week.",
+    desc: "Call or text us at +1 855-706-4191 — our driver support team is available 7 days a week.",
     cta: "Call Now",
-    href: "tel:8005551234",
+    href: "tel:+18557064191",
     color: "text-purple-400",
     bg: "bg-purple-400/10",
   },

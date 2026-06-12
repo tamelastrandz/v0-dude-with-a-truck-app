@@ -34,11 +34,11 @@ export function CtaFooter() {
               <ArrowRight className="size-5" aria-hidden="true" />
             </button>
             <a
-              href="tel:8005551234"
+              href="tel:+18557064191"
               className="font-heading inline-flex h-13 items-center gap-2 rounded-lg border border-border bg-transparent px-8 text-base font-semibold uppercase tracking-wide text-foreground transition-colors hover:bg-secondary"
             >
               <Phone className="size-5" />
-              (800) 555-1234
+              +1 855-706-4191
             </a>
           </div>
         </div>
@@ -84,11 +84,11 @@ export function CtaFooter() {
                   Contact
                 </p>
                 <a
-                  href="tel:8005551234"
+                  href="tel:+18557064191"
                   className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
                 >
                   <Phone className="size-3.5" />
-                  (800) 555-1234
+                  +1 855-706-4191
                 </a>
                 <a
                   href="mailto:hello@dudewithAtruck.com"
