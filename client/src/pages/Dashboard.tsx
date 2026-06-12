@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Truck,
@@ -32,8 +32,10 @@ import {
   getAffiliateByUserId,
   getAffiliatePayouts,
   updateBookingStatus,
+  getDriverProfile,
 } from "@/lib/db";
 import { OpenRequestsPanel } from "@/components/driver/OpenRequestsPanel";
+import { DriverProfileSetup } from "@/components/driver/DriverProfileSetup";
 import { ConversationPanel } from "@/components/messaging/ConversationPanel";
 import { startStripeCheckout } from "@/lib/stripeCheckout";
 import type { MoveRequest, Subscription, Affiliate, AffiliatePayout, Booking } from "@/lib/database.types";
@@ -49,6 +51,8 @@ function isActiveSubscription(sub: Subscription | null): boolean {
 export default function Dashboard() {
   const { user, profile, loading, signOut } = useAuth();
   const [, navigate] = useLocation();
+  const search = useSearch();
+  const setupProfile = new URLSearchParams(search).get("setup") === "profile";
 
   // Data states
   const [requests, setRequests] = useState<MoveRequest[]>([]);
@@ -59,6 +63,8 @@ export default function Dashboard() {
   const [dataLoading, setDataLoading] = useState(true);
   const [driverTab, setDriverTab] = useState<DriverTab>("requests");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [showProfileSetup, setShowProfileSetup] = useState(setupProfile);
+  const [profileCheckDone, setProfileCheckDone] = useState(false);
   const [customerBookings, setCustomerBookings] = useState<any[]>([]);
   const [activeChat, setActiveChat] = useState<{
     bookingId: string;
@@ -129,6 +135,36 @@ export default function Dashboard() {
 
     loadData();
   }, [user, profile]);
+
+  // Prompt profile setup after payment or when profile is incomplete
+  useEffect(() => {
+    if (!user || profile?.role !== "driver" || dataLoading) return;
+
+    if (!isActiveSubscription(subscription)) {
+      setProfileCheckDone(true);
+      return;
+    }
+
+    if (setupProfile) {
+      setShowProfileSetup(true);
+      setProfileCheckDone(true);
+      return;
+    }
+
+    getDriverProfile(user.id).then(({ data }) => {
+      const incomplete =
+        !data?.service_area?.trim() ||
+        !data?.bio?.trim() ||
+        !data?.profile_photo_url?.trim();
+      setShowProfileSetup(incomplete);
+      setProfileCheckDone(true);
+    });
+  }, [user, profile?.role, subscription, setupProfile, dataLoading]);
+
+  const finishProfileSetup = () => {
+    setShowProfileSetup(false);
+    navigate("/dashboard", { replace: true });
+  };
 
   // Refresh bookings after claiming a job (called from OpenRequestsPanel via tab switch)
   const refreshBookings = async () => {
@@ -402,8 +438,14 @@ export default function Dashboard() {
                   }}
                   className="font-heading mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-primary px-6 text-sm font-semibold uppercase tracking-wide text-primary-foreground hover:bg-primary/80 disabled:opacity-60"
                 >
-                  {checkoutLoading ? "Opening checkout…" : "Subscribe — $29/mo"}
+                  {checkoutLoading ? "Redirecting to checkout…" : "Subscribe — $29/mo"}
                 </button>
+              </div>
+            ) : showProfileSetup ? (
+              <DriverProfileSetup userId={user.id} onComplete={finishProfileSetup} />
+            ) : !profileCheckDone ? (
+              <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
+                Loading your dashboard…
               </div>
             ) : (
               <>

@@ -54,8 +54,8 @@ const NEXT_STEPS = [
     icon: UserCircle,
     title: "Complete Your Profile",
     desc: "Add your truck photo, bio, and service area so customers can find and trust you.",
-    cta: "Go to Dashboard",
-    href: "/dashboard",
+    cta: "Complete Profile",
+    href: "/dashboard?setup=profile",
     color: "text-blue-400",
     bg: "bg-blue-400/10",
   },
@@ -103,6 +103,8 @@ export default function PaymentSuccess() {
   const { user, profile } = useAuth();
   const [confetti, setConfetti] = useState(false);
   const [syncing, setSyncing] = useState(true);
+  const [syncOk, setSyncOk] = useState(false);
+  const [redirectIn, setRedirectIn] = useState<number | null>(null);
 
   const params = new URLSearchParams(search);
   const planKey = (params.get("plan") ?? "founders") as PlanKey;
@@ -111,24 +113,25 @@ export default function PaymentSuccess() {
 
   // Activate subscription in Supabase after Stripe payment
   useEffect(() => {
-    if (!user?.id || !profile?.email) {
-      setSyncing(false);
-      return;
-    }
-
     let cancelled = false;
 
     const syncSubscription = async () => {
       try {
-        await fetch("/api/stripe/confirm-checkout", {
+        const res = await fetch("/api/stripe/confirm-checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId: user.id,
-            email: profile.email,
+            userId: user?.id,
+            email: profile?.email,
             sessionId: sessionId ?? undefined,
           }),
         });
+        if (res.ok) {
+          if (!cancelled) setSyncOk(true);
+        } else {
+          const body = await res.json().catch(() => ({}));
+          console.error("[PaymentSuccess] subscription sync failed:", body.error);
+        }
       } catch (err) {
         console.error("[PaymentSuccess] subscription sync failed:", err);
       } finally {
@@ -141,6 +144,25 @@ export default function PaymentSuccess() {
       cancelled = true;
     };
   }, [user?.id, profile?.email, sessionId]);
+
+  // Auto-redirect to profile setup after successful payment
+  useEffect(() => {
+    if (syncing || !syncOk) return;
+
+    setRedirectIn(3);
+    const interval = setInterval(() => {
+      setRedirectIn((n) => {
+        if (n === null || n <= 1) {
+          clearInterval(interval);
+          navigate("/dashboard?setup=profile");
+          return 0;
+        }
+        return n - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [syncing, syncOk, navigate]);
 
   // Trigger confetti animation on mount
   useEffect(() => {
@@ -185,11 +207,11 @@ export default function PaymentSuccess() {
             </span>
           </a>
           <a
-            href="/dashboard"
+            href="/dashboard?setup=profile"
             className="font-heading inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold uppercase tracking-wide text-primary-foreground hover:bg-primary/80 transition-colors"
           >
             <LayoutDashboard className="size-4" />
-            Go to Dashboard
+            Complete Profile
           </a>
         </div>
       </header>
@@ -211,8 +233,16 @@ export default function PaymentSuccess() {
             </h1>
             <p className="mx-auto mt-4 max-w-lg text-pretty text-lg leading-relaxed text-muted-foreground">
               Welcome to Dude With A Truck. Your driver account is set up and your subscription is
-              active. Here's everything you need to get your first job.
+              active. Next up: finish your profile so customers can book you.
             </p>
+            {syncing && (
+              <p className="mt-3 text-sm text-muted-foreground">Activating your subscription…</p>
+            )}
+            {!syncing && syncOk && redirectIn !== null && redirectIn > 0 && (
+              <p className="mt-3 text-sm text-primary">
+                Redirecting to profile setup in {redirectIn}…
+              </p>
+            )}
           </div>
 
           {/* Plan confirmation pill */}
@@ -303,10 +333,10 @@ export default function PaymentSuccess() {
             Your dashboard is live. Browse open requests and claim your first job today.
           </p>
           <a
-            href="/dashboard"
+            href="/dashboard?setup=profile"
             className="font-heading inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-7 text-sm font-semibold uppercase tracking-wide text-primary-foreground hover:bg-primary/80 transition-colors active:scale-[0.97]"
           >
-            Go to My Dashboard
+            Complete My Profile
             <ArrowRight className="size-4" />
           </a>
         </div>

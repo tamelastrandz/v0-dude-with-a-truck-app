@@ -21,17 +21,15 @@ export default async function handler(req: any, res: any) {
       sessionId?: string;
     };
 
-    if (!userId || !email) {
-      return res.status(400).json({ error: "Missing userId or email." });
-    }
-
     const stripe = getStripe();
     let session;
 
     if (sessionId) {
       session = await stripe.checkout.sessions.retrieve(sessionId);
-    } else {
+    } else if (userId && email) {
       session = await findPaidCheckoutSession(stripe, userId, email);
+    } else {
+      return res.status(400).json({ error: "Provide sessionId or userId and email." });
     }
 
     if (!session) {

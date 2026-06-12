@@ -178,7 +178,6 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
       //    The webhook (invoice.paid) will activate the subscription in Supabase
       //    after the driver completes payment.
       toast.success("Account created! Redirecting to secure payment…");
-      handleClose();
 
       await startStripeCheckout({
         userId,
@@ -186,11 +185,12 @@ export function DriverSignupModal({ open, onClose, plan }: DriverSignupModalProp
         fullName,
         planKey: plan,
       });
+      handleClose();
       // Note: no navigate() here — startStripeCheckout sets window.location.href
       // so the browser leaves this page and goes to Stripe Checkout.
     } catch (err) {
       console.error("[DriverSignup] Unexpected error:", err);
-      toast.error("Something went wrong. Please try again.");
+      toast.error(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

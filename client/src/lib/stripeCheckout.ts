@@ -6,10 +6,10 @@
  * Flow:
  *  1. POST /api/stripe/create-checkout with userId, email, planKey, origin
  *  2. Server creates a Stripe Checkout Session and returns the URL
- *  3. Frontend opens the URL in a new tab
+ *  3. Frontend redirects the browser to Stripe Checkout (same tab)
  *
- * After successful checkout, Stripe redirects to /dashboard?checkout=success&plan=<key>
- * The webhook (invoice.paid) then activates the subscription in Supabase.
+ * After successful checkout, Stripe redirects to /payment-success?plan=<key>
+ * confirm-checkout then activates the subscription in Supabase.
  */
 
 import type { PlanKey } from "./planTypes";
@@ -42,6 +42,5 @@ export async function startStripeCheckout(opts: StartCheckoutOptions): Promise<v
   const { url } = await response.json();
   if (!url) throw new Error("No checkout URL returned from server.");
 
-  // Open Stripe Checkout in a new tab
-  window.open(url, "_blank");
+  window.location.assign(url);
 }
