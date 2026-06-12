@@ -3,12 +3,15 @@
  * Added: "Get a Quote" button opens customer request modal.
  */
 
-import { ArrowRight, Truck, Phone, Mail } from "lucide-react";
+
+import { ArrowRight, Phone, Mail } from "lucide-react";
 import { useState } from "react";
 import { CustomerRequestModal } from "@/components/forms/CustomerRequestModal";
 
+
 export function CtaFooter() {
   const [requestOpen, setRequestOpen] = useState(false);
+
 
   return (
     <>
@@ -44,6 +47,7 @@ export function CtaFooter() {
         </div>
       </section>
 
+
       {/* Footer */}
       <footer className="border-t border-border bg-background">
         <div className="mx-auto max-w-7xl px-6 py-12 lg:px-8">
@@ -51,9 +55,13 @@ export function CtaFooter() {
             {/* Brand */}
             <div className="flex flex-col items-center gap-3 md:items-start">
               <a href="/" className="flex items-center gap-3">
-                <span className="flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                  <Truck className="size-5" aria-hidden="true" />
-                </span>
+                <img
+                  src="/images/logoo.png"
+                  alt=""
+                  width={40}
+                  height={40}
+                  className="size-10 shrink-0 object-contain"
+                />
                 <span className="font-heading text-sm font-bold uppercase leading-[0.95] tracking-wide text-foreground">
                   Dude With
                   <br />A Truck
@@ -63,47 +71,3 @@ export function CtaFooter() {
                 Connecting customers with local truck owners for moves, hauls, and deliveries.
               </p>
             </div>
-
-            {/* Links */}
-            <div className="grid grid-cols-2 gap-x-16 gap-y-4 text-sm">
-              <div className="flex flex-col gap-3">
-                <p className="font-heading font-semibold uppercase tracking-widest text-foreground">
-                  Platform
-                </p>
-                <a href="#services" className="text-muted-foreground hover:text-foreground">Services</a>
-                <a href="#how-it-works" className="text-muted-foreground hover:text-foreground">How It Works</a>
-                <a href="#pricing" className="text-muted-foreground hover:text-foreground">Driver Pricing</a>
-                <a href="#crew" className="text-muted-foreground hover:text-foreground">Meet the Crew</a>
-              </div>
-              <div className="flex flex-col gap-3">
-                <p className="font-heading font-semibold uppercase tracking-widest text-foreground">
-                  Contact
-                </p>
-                <a
-                  href="tel:8005551234"
-                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-                >
-                  <Phone className="size-3.5" />
-                  (800) 555-1234
-                </a>
-                <a
-                  href="mailto:hello@dudewithAtruck.com"
-                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-                >
-                  <Mail className="size-3.5" />
-                  hello@dudewithatruck.com
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-12 border-t border-border pt-8 text-center text-xs text-muted-foreground">
-            <p>© {new Date().getFullYear()} Dude With A Truck. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
-
-      <CustomerRequestModal open={requestOpen} onClose={() => setRequestOpen(false)} />
-    </>
-  );
-}
