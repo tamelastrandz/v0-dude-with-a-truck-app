@@ -91,12 +91,47 @@ const NEXT_STEPS = [
 export default function PaymentSuccess() {
   const search = useSearch();
   const [, navigate] = useLocation();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [confetti, setConfetti] = useState(false);
+  const [syncing, setSyncing] = useState(true);
 
   const params = new URLSearchParams(search);
   const planKey = (params.get("plan") ?? "founders") as PlanKey;
+  const sessionId = params.get("session_id");
   const plan = PLAN_DETAILS[planKey] ?? PLAN_DETAILS.founders;
+
+  // Activate subscription in Supabase after Stripe payment
+  useEffect(() => {
+    if (!user?.id || !profile?.email) {
+      setSyncing(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const syncSubscription = async () => {
+      try {
+        await fetch("/api/stripe/confirm-checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            email: profile.email,
+            sessionId: sessionId ?? undefined,
+          }),
+        });
+      } catch (err) {
+        console.error("[PaymentSuccess] subscription sync failed:", err);
+      } finally {
+        if (!cancelled) setSyncing(false);
+      }
+    };
+
+    void syncSubscription();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, profile?.email, sessionId]);
 
   // Trigger confetti animation on mount
   useEffect(() => {

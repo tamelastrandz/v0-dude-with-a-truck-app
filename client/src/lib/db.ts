@@ -176,7 +176,7 @@ export async function getUserSubscription(userId: string) {
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
   return { data: data as Subscription | null, error };
 }
 
@@ -444,6 +444,25 @@ export async function signUpAffiliate(opts: {
 
   const userId = signUpData.user?.id;
   if (!userId) return { userId: null, referralCode: null, error: new Error("No user ID returned.") };
+
+  // Ensure authenticated session exists for RLS-protected affiliate insert
+  if (!signUpData.session) {
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: opts.email,
+      password: opts.password,
+    });
+    if (signInError) {
+      return {
+        userId,
+        referralCode: null,
+        error: new Error(
+          signInError.message.includes("Email not confirmed")
+            ? "Please confirm your email, then sign in to finish affiliate setup."
+            : signInError.message
+        ),
+      };
+    }
+  }
 
   // 2. Ensure profile role is set to affiliate (trigger may have already done this)
   await (supabase.from("profiles") as any)

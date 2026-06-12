@@ -89,10 +89,27 @@ export default function Dashboard() {
           setRequests(reqRes.data ?? []);
           setCustomerBookings(bookRes.data ?? []);
         } else if (profile.role === "driver") {
-          const [subRes, bookRes] = await Promise.all([
-            getUserSubscription(user.id),
-            getDriverBookings(user.id),
-          ]);
+          let subRes = await getUserSubscription(user.id);
+          const bookRes = await getDriverBookings(user.id);
+
+          if (!isActiveSubscription(subRes.data)) {
+            try {
+              const syncRes = await fetch("/api/stripe/confirm-checkout", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  userId: user.id,
+                  email: profile.email,
+                }),
+              });
+              if (syncRes.ok) {
+                subRes = await getUserSubscription(user.id);
+              }
+            } catch (err) {
+              console.error("[Dashboard] subscription sync failed:", err);
+            }
+          }
+
           setSubscription(subRes.data);
           setBookings(bookRes.data ?? []);
         } else if (profile.role === "affiliate") {

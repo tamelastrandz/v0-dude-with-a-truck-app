@@ -65,7 +65,7 @@ export default async function handler(req: any, res: any) {
         plan.trialDays > 0
           ? { trial_period_days: plan.trialDays, metadata: { user_id: userId, plan_key: planKey } }
           : { metadata: { user_id: userId, plan_key: planKey } },
-      success_url: `${origin}/payment-success?plan=${planKey}`,
+      success_url: `${origin}/payment-success?plan=${planKey}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/#pricing`,
     });
 
