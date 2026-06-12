@@ -13,7 +13,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   Truck,
   Package,
-  Star,
   Clock,
   LogOut,
   Home,
@@ -22,9 +21,12 @@ import {
   ChevronRight,
   Search,
   LayoutDashboard,
+  MessageSquare,
+  CheckCircle2,
 } from "lucide-react";
 import {
   getCustomerRequests,
+  getCustomerBookings,
   getDriverBookings,
   getUserSubscription,
   getAffiliateByUserId,
@@ -32,11 +34,17 @@ import {
   updateBookingStatus,
 } from "@/lib/db";
 import { OpenRequestsPanel } from "@/components/driver/OpenRequestsPanel";
+import { ConversationPanel } from "@/components/messaging/ConversationPanel";
+import { startStripeCheckout } from "@/lib/stripeCheckout";
 import type { MoveRequest, Subscription, Affiliate, AffiliatePayout, Booking } from "@/lib/database.types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-type DriverTab = "overview" | "browse";
+type DriverTab = "requests" | "active" | "completed";
+
+function isActiveSubscription(sub: Subscription | null): boolean {
+  return sub != null && (sub.status === "active" || sub.status === "trialing");
+}
 
 export default function Dashboard() {
   const { user, profile, loading, signOut } = useAuth();
@@ -49,7 +57,15 @@ export default function Dashboard() {
   const [payouts, setPayouts] = useState<AffiliatePayout[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
-  const [driverTab, setDriverTab] = useState<DriverTab>("overview");
+  const [driverTab, setDriverTab] = useState<DriverTab>("requests");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [customerBookings, setCustomerBookings] = useState<any[]>([]);
+  const [activeChat, setActiveChat] = useState<{
+    bookingId: string;
+    customerId: string;
+    driverId: string;
+    label: string;
+  } | null>(null);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -66,8 +82,12 @@ export default function Dashboard() {
       setDataLoading(true);
       try {
         if (profile.role === "customer") {
-          const { data } = await getCustomerRequests(user.id);
-          setRequests(data ?? []);
+          const [reqRes, bookRes] = await Promise.all([
+            getCustomerRequests(user.id),
+            getCustomerBookings(user.id),
+          ]);
+          setRequests(reqRes.data ?? []);
+          setCustomerBookings(bookRes.data ?? []);
         } else if (profile.role === "driver") {
           const [subRes, bookRes] = await Promise.all([
             getUserSubscription(user.id),
@@ -192,7 +212,7 @@ export default function Dashboard() {
         {/* Welcome */}
         <div className="mb-8">
           <p className="font-heading text-sm font-semibold uppercase tracking-widest text-primary">
-            Dashboard
+            {profile.role === "driver" ? "Dude Profile" : "Dashboard"}
           </p>
           <h1 className="font-heading mt-1 text-4xl font-bold uppercase tracking-tight text-foreground">
             Welcome back, {profile.full_name?.split(" ")[0] ?? "there"}
@@ -241,35 +261,89 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="flex flex-col gap-4">
-                {requests.map((req) => (
-                  <div key={req.id} className="rounded-xl border border-border bg-card p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-heading font-bold uppercase tracking-wide text-foreground">
-                          {req.pickup_city} → {req.dropoff_city}
-                        </p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {req.item_description}
-                        </p>
-                        {req.preferred_date && (
-                          <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                            <Clock className="size-3" />
-                            {new Date(req.preferred_date).toLocaleDateString()}
+                {requests.map((req) => {
+                  const booking = customerBookings.find(
+                    (b) => b.request_id === req.id || b.move_requests?.id === req.id
+                  );
+                  const driver = booking?.profiles;
+                  const canMessage =
+                    booking &&
+                    driver &&
+                    ["booked", "matched", "completed"].includes(req.status);
+
+                  return (
+                    <div key={req.id} className="rounded-xl border border-border bg-card p-6">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-heading font-bold uppercase tracking-wide text-foreground">
+                            {req.pickup_city} → {req.dropoff_city}
                           </p>
-                        )}
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {req.item_description}
+                          </p>
+                          {req.preferred_date && (
+                            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                              <Clock className="size-3" />
+                              {new Date(req.preferred_date).toLocaleDateString()}
+                            </p>
+                          )}
+                          {booking && (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              Driver:{" "}
+                              <span className="font-medium text-foreground">
+                                {driver?.full_name ?? "Assigned"}
+                              </span>
+                              {booking.quoted_price != null && (
+                                <>
+                                  {" · "}${Number(booking.quoted_price).toFixed(2)} quoted
+                                </>
+                              )}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-2">
+                          <span
+                            className={cn(
+                              "rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide",
+                              statusColors[req.status] ?? "bg-secondary text-foreground"
+                            )}
+                          >
+                            {req.status}
+                          </span>
+                          {canMessage && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setActiveChat({
+                                  bookingId: booking.id,
+                                  customerId: user.id,
+                                  driverId: booking.driver_id,
+                                  label: driver?.full_name ?? "Your driver",
+                                })
+                              }
+                              className="font-heading inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground hover:bg-secondary/80"
+                            >
+                              <MessageSquare className="size-3.5" />
+                              Message
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <span
-                        className={cn(
-                          "shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide",
-                          statusColors[req.status] ?? "bg-secondary text-foreground"
-                        )}
-                      >
-                        {req.status}
-                      </span>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
+            )}
+
+            {activeChat && profile.role === "customer" && (
+              <ConversationPanel
+                bookingId={activeChat.bookingId}
+                customerId={activeChat.customerId}
+                driverId={activeChat.driverId}
+                currentUserId={user.id}
+                otherPartyLabel={activeChat.labee}
+                onClose={() => setActiveChat(null)}
+              />
             )}
           </div>
         )}
@@ -279,223 +353,143 @@ export default function Dashboard() {
         ================================================================ */}
         {profile.role === "driver" && (
           <div className="flex flex-col gap-6">
-            {/* Tab bar */}
-            <div className="flex gap-1 rounded-lg border border-border bg-card p-1 w-fit">
-              <button
-                onClick={() => setDriverTab("overview")}
-                className={cn(
-                  "font-heading flex items-center gap-2 rounded-md px-5 py-2 text-sm font-semibold uppercase tracking-wide transition-colors",
-                  driverTab === "overview"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <LayoutDashboard className="size-4" />
-                Overview
-              </button>
-              <button
-                onClick={() => {
-                  setDriverTab("browse");
-                }}
-                className={cn(
-                  "font-heading flex items-center gap-2 rounded-md px-5 py-2 text-sm font-semibold uppercase tracking-wide transition-colors",
-                  driverTab === "browse"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Search className="size-4" />
-                Browse Jobs
-              </button>
-            </div>
-
-            {/* ---- OVERVIEW TAB ---- */}
-            {driverTab === "overview" && (
-              <div className="flex flex-col gap-8">
-                {/* Subscription card */}
-                {subscription && (
-                  <div className="rounded-xl border border-primary/30 bg-primary/5 p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-heading text-sm font-semibold uppercase tracking-widest text-primary">
-                          Subscription
-                        </p>
-                        <p className="font-heading mt-1 text-2xl font-bold uppercase text-foreground">
-                          {subscription.plan_name}
-                        </p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          ${subscription.monthly_price}/month
-                        </p>
-                        {subscription.status === "trialing" && subscription.trial_end_date && (
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            Free trial ends:{" "}
-                            <span className="font-semibold text-foreground">
-                              {new Date(subscription.trial_end_date).toLocaleDateString()}
-                            </span>
-                          </p>
-                        )}
-                      </div>
-                      <span
-                        className={cn(
-                          "rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide",
-                          statusColors[subscription.status] ?? "bg-secondary text-foreground"
-                        )}
-                      >
-                        {subscription.status}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Stats row */}
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                  {[
-                    { label: "Total Jobs", value: bookings.length, icon: Package },
-                    {
-                      label: "Completed",
-                      value: bookings.filter((b: any) => b.status === "completed").length,
-                      icon: Star,
-                    },
-                    {
-                      label: "Confirmed",
-                      value: bookings.filter((b: any) => b.status === "confirmed").length,
-                      icon: Clock,
-                    },
-                    {
-                      label: "Earnings",
-                      value: `$${bookings
-                        .filter((b: any) => b.status === "completed")
-                        .reduce((sum: number, b: any) => sum + (b.driver_payout ?? 0), 0)
-                        .toFixed(0)}`,
-                      icon: DollarSign,
-                    },
-                  ].map((stat) => (
-                    <div key={stat.label} className="rounded-xl border border-border bg-card p-5">
-                      <stat.icon className="size-5 text-primary" />
-                      <p className="font-heading mt-3 text-2xl font-bold uppercase text-foreground">
-                        {stat.value}
-                      </p>
-                      <p className="font-heading text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                        {stat.label}
-                      </p>
-                    </div>
+            {!isActiveSubscription(subscription) ? (
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-8 text-center">
+                <Truck className="mx-auto size-12 text-primary" />
+                <h2 className="font-heading mt-4 text-2xl font-bold uppercase tracking-wide text-foreground">
+                  Activate Your Dude Profile
+                </h2>
+                <p className="mx-auto mt-3 max-w-md text-muted-foreground">
+                  Complete your $29/month subscription to browse job requests, track active
+                  hauls, and message customers in the app.
+                </p>
+                <button
+                  type="button"
+                  disabled={checkoutLoading}
+                  onClick={async () => {
+                    setCheckoutLoading(true);
+                    try {
+                      await startStripeCheckout({
+                        userId: user.id,
+                        email: profile.email,
+                        fullName: profie.full_name ?? undefined,
+                        planKey: "standard",
+                      });
+                    } catch (err) {
+                       toast.error(
+                        err instanceof Error ? err.message : "Could not start checkout."
+                      );
+                    } finally {
+                      setCheckoutLoading(false);
+                    }
+                  }}
+                  className="font-heading mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-primary px-6 text-sm font-semibold uppercase tracking-wide text-primary-foreground hover:bg-primary/80 disabled:opacity-60"
+                >
+                  {checkoutLoading ? "Opening checkout…" : "Subscribe — $29/mo"}
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-1 rounded-lg border border-border bg-card p-1 w-fit flex-wrap">
+                  {(
+                    [
+                      { key: "requests" as const, label: "Job Requests", icon: Search },
+                      { key: "active" as const, label: "Active Jobs", icon: Clock },
+                      { key: "completed" as const, label: "Completed", icon: CheckCircle2 },
+                    ] as const
+                  ).map(({ key, label, icon: Icon }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setDriverTab(key)}
+                      className={cn(
+                        "font-heading flex items-center gap-2 rounded-md px-5 py-2 text-sm font-semibold uppercase tracking-wide transition-colors",
+                        driverTab === key
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Icon className="size-4" />
+                      {label}
+                    </button>
                   ))}
                 </div>
 
-                {/* Bookings list */}
-                <div>
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="font-heading text-xl font-bold uppercase tracking-wide text-foreground">
-                      Your Bookings
-                    </h2>
-                    <button
-                      onClick={() => setDriverTab("browse")}
-                      className="font-heading inline-flex items-center gap-1 text-sm font-semibold uppercase tracking-wide text-primary hover:underline"
-                    >
-                      Browse Jobs <ChevronRight className="size-4" />
-                    </button>
+                {subscription && (
+                  <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+                    <span className="font-semibold text-foreground">{subscription.plan_name}</span>
+                    {" · "}${subscription.monthly_price}/mo ·{" "}
+                    <span className="uppercase">{subscription.status}</span>
+                    {" · "}Platform fee on jobs: 30%
                   </div>
+                )}
 
-                  {dataLoading ? (
-                    <div className="grid gap-4">
-                      {[1, 2].map((i) => (
-                        <div key={i} className="h-28 animate-pulse rounded-xl border border-border bg-card" />
-                      ))}
-                    </div>
-                  ) : bookings.length === 0 ? (
-                    <div className="rounded-xl border border-border bg-card p-12 text-center">
-                      <Truck className="mx-auto size-10 text-muted-foreground" />
-                      <p className="mt-4 font-heading text-lg font-bold uppercase text-foreground">
-                        No Bookings Yet
-                      </p>
-                      <p className="mt-2 text-muted-foreground">
-                        Browse open requests to claim your first job.
-                      </p>
-                      <button
-                        onClick={() => setDriverTab("browse")}
-                        className="font-heading mt-6 inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold uppercase tracking-wide text-primary-foreground hover:bg-primary/80"
-                      >
-                        <Search className="size-4" />
-                        Browse Open Jobs
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-4">
-                      {bookings.map((booking: any) => (
-                        <div
-                          key={booking.id}
-                          className="rounded-xl border border-border bg-card p-6"
-                        >
-                          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="min-w-0 flex-1">
-                              <p className="font-heading font-bold uppercase tracking-wide text-foreground">
-                                {booking.move_requests?.pickup_city} →{" "}
-                                {booking.move_requests?.dropoff_city}
-                              </p>
-                              <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
-                                {booking.move_requests?.item_description}
-                              </p>
-                              {booking.quoted_price != null && (
-                                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                                  <span className="text-muted-foreground">
-                                    Quoted:{" "}
-                                    <span className="font-semibold text-foreground">
-                                      ${booking.quoted_price}
-                                    </span>
-                                  </span>
-                                  <span className="text-muted-foreground">
-                                    Platform fee:{" "}
-                                    <span className="font-semibold text-foreground">
-                                      ${booking.platform_fee}
-                                    </span>
-                                  </span>
-                                  <span className="text-muted-foreground">
-                                    Your payout:{" "}
-                                    <span className="font-semibold text-primary">
-                                      ${booking.driver_payout}
-                                    </span>
-                                  </span>
-                                </div>
-                              )}
-                              {booking.move_requests?.preferred_date && (
-                                <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                                  <Clock className="size-3" />
-                                  {new Date(booking.move_requests.preferred_date).toLocaleDateString()}
-                                </p>
-                              )}
-                            </div>
+                {driverTab === "requests" && (
+                  <OpenRequestsPanel driverId={user.id} onJobClaimed={refreshBookings} />
+                )}
 
-                            <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-                              <span
-                                className={cn(
-                                  "rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide",
-                                  statusColors[booking.status] ?? "bg-secondary text-foreground"
-                                )}
-                              >
-                                {booking.status}
-                              </span>
-                              {/* Action buttons based on status */}
-                              {booking.status === "confirmed" && (
-                                <button
-                                  onClick={() => handleMarkComplete(booking.id)}
-                                  className="font-heading rounded-md bg-green-400/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-green-400 hover:bg-green-400/20"
-                                >
-                                  Mark Complete
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+                {driverTab === "active" && (
+                  <DriverBookingList
+                    bookings={bookings.filter((b: Booking) =>
+                      ["pending", "confirmed", "in_progress"].includes(b.status)
+                    )}
+                    emptyTitle="No Active Jobs"
+                    emptyHint="Claim an open request to start your first haul."
+                    onMarkComplete={handleMarkComplete}
+                    onMessage={(booking) => {
+                      const customerId = booking.move_requests?.customer_id;
+                      if (!customerId) {
+                        toast.error("Customer account required for in-app messaging.");
+                        return;
+                      }
+                      setActiveChat({
+                        bookingId: booking.id,
+                        customerId,
+                        driverId: user.id,
+                        label: booking.move_requests?.customer_name ?? "Customer",
+                      });
+                    }}
+                    statusColors={statusColors}
+                    loading={dataLoading}
+                  />
+                )}
+
+                {driverTab === "completed" && (
+                  <DriverBookingList
+                    bookings={bookings.filter((b: Booking) => b.status === "completed")}
+                    emptyTitle="No Completed Jobs Yet"
+                    emptyHint="Finished hauls will appear here with payout details."
+                    onMarkComplete={handleMarkComplete}
+                    onMessage={(booking) => {
+                      const customerId = booking.move_requests?.customer_id;
+                      if (!customerId) {
+                        toast.error("Customer account required for in-app messaging.");
+                        return;
+                      }
+                      setActiveChat({
+                        bookingId: booking.id,
+                        customerId,
+                        driverId: user.id,
+                        label: booking.move_requests?.customer_name ?? "Customer",
+                      });
+                    }}
+                    statusColors={statusColors}
+                    loading={dataLoading}
+                    showCompleteAction={false}
+                  />
+                )}
+              </>
             )}
 
-            {/* ---- BROWSE JOBS TAB ---- */}
-            {driverTab === "browse" && (
-              <OpenRequestsPanel driverId={user.id} />
+            {activeChat && profile.role === "driver" && (
+              <ConversationPanel
+                bookingId={activeChat.bookingId}
+                customerId={activeChat.customerId}
+                driverId={activeChat.driverId}
+                currentUserId={user.id}
+                otherPartyLabel={activeChat.label}
+                onClose={() => setActiveChat(null)}
+              />
             )}
           </div>
         )}
@@ -600,6 +594,126 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+type BookingWithRequest = Booking & {
+  move_requests?: {
+    pickup_city?: string;
+    dropoff_city?: string;
+    item_description?: string;
+    preferred_date?: string | null;
+    customer_id?: string | null;
+    customer_name?: string;
+  };
+};
+
+function DriverBookingList({
+  bookings,
+  emptyTitle,
+  emptyHint,
+  onMarkComplete,
+  onMessage,
+  statusColors,
+  loading,
+  showCompleteAction = true,
+}: {
+  bookings: BookingWithRequest[];
+  emptyTitle: string;
+  emptyHint: string;
+  onMarkComplete: (bookingId: string) => void;
+  onMessage: (booking: BookingWithRequest) => void;
+  statusColors: Record<string, string>;
+  loading: boolean;
+  showCompleteAction?: boolean;
+}) {
+  if (loading) {
+    return (
+      <div className="grid gap-4">
+        {[1, 2].map((i) => (
+          <div key={i} className="h-28 animate-pulse rounded-xl border border-border bg-card" />
+        ))}
+      </div>
+    );
+  }
+
+  if (bookings.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-12 text-center">
+        <Truck className="mx-auto size-10 text-muted-foreground" />
+        <p className="mt-4 font-heading text-lg font-bold uppercase text-foreground">{emptyTitle}</p>
+        <p className="mt-2 text-muted-foreground">{emptyHint}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {bookings.map((booking) => (
+        <div key={booking.id} className="rounded-xl border border-border bg-card p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <p className="font-heading font-bold uppercase tracking-wide text-foreground">
+                {booking.move_requests?.pickup_city} → {booking.move_requests?.dropoff_city}
+              </p>
+              <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                {booking.move_requests?.item_description}
+              </p>
+              {booking.quoted_price != null && (
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                  <span className="text-muted-foreground">
+                    Quoted:{" "}
+                    <span className="font-semibold text-foreground">${booking.quoted_price}</span>
+                  </span>
+                  <span className="text-muted-foreground">
+                    Platform (30%):{" "}
+                    <span className="font-semibold text-foreground">${booking.platform_fee}</span>
+                  </span>
+                  <span className="text-muted-foreground">
+                    Your payout:{" "}
+                    <span className="font-semibold text-primary">${booking.driver_payout}</span>
+                  </span>
+                </div>
+              )}
+              {booking.move_requests?.preferred_date && (
+                <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock className="size-3" />
+                  {new Date(booking.move_requests.preferred_date).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+
+            <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+              <span
+                className={cn(
+                  "rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide",
+                  statusColors[booking.status] ?? "bg-secondary text-foreground"
+                )}
+              >
+                {booking.status}
+              </span>
+              <button
+                type="button"
+                onClick={() => onMessage(booking)}
+                className="font-heading inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground hover:bg-secondary/80"
+              >
+                <MessageSquare className="size-3.5" />
+                Message
+              </button>
+              {showCompleteAction && booking.status === "confirmed" && (
+                <button
+                  type="button"
+                  onClick={() => onMarkComplete(booking.id)}
+                  className="font-heading rounded-md bg-green-400/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-green-400 hover:bg-green-400/20"
+                >
+                  Mark Complete
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
