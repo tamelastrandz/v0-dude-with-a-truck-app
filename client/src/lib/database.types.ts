@@ -106,6 +106,23 @@ export interface Booking {
   updated_at: string;
 }
 
+export interface Conversation {
+  id: string;
+  booking_id: string;
+  customer_id: string;
+  driver_id: string;
+  created_at: string;
+}
+
+export interface Message {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  body: string;
+  read_at: string | null;
+  created_at: string;
+}
+
 export interface Payment {
   id: string;
   booking_id: string | null;
@@ -208,6 +225,16 @@ export interface Database {
         Row: AffiliatePayout;
         Insert: Omit<AffiliatePayout, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<AffiliatePayout, "id" | "created_at">>;
+      };
+      conversations: {
+        Row: Conversation;
+        Insert: Omit<Conversation, "id" | "created_at">;
+        Update: Partial<Omit<Conversation, "id" | "created_at">>;
+      };
+      messages: {
+        Row: Message;
+        Insert: Omit<Message, "id" | "created_at" | "read_at">;
+        Update: Partial<Omit<Message, "id" | "created_at">>;
       };
     };
   };

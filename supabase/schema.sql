@@ -165,7 +165,7 @@ CREATE TABLE IF NOT EXISTS public.bookings (
   status              TEXT NOT NULL DEFAULT 'pending'
                         CHECK (status IN ('pending', 'confirmed', 'in_progress', 'completed', 'canceled')),
   quoted_price        NUMERIC(10,2),
-  platform_fee        NUMERIC(10,2),  -- platform takes a cut (e.g. 15%)
+  platform_fee        NUMERIC(10,2),  -- platform takes 30% (see shared/const.ts)
   driver_payout       NUMERIC(10,2),  -- quoted_price - platform_fee
   completion_notes    TEXT,
   completed_at        TIMESTAMPTZ,
@@ -351,6 +351,67 @@ CREATE POLICY "Customers can view bookings for their requests"
 CREATE POLICY "Admins can manage all bookings"
   ON public.bookings FOR ALL USING (public.is_admin());
 
+CREATE POLICY "Drivers can insert their own bookings"
+  ON public.bookings FOR INSERT WITH CHECK (auth.uid() = driver_id);
+
+CREATE POLICY "Drivers can update their own bookings"
+  ON public.bookings FOR UPDATE USING (auth.uid() = driver_id);
+
+CREATE POLICY "Drivers can mark requests booked"
+  ON public.move_requests FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'driver')
+  );
+
+-- ---- CONVERSATIONS & MESSAGES ----
+CREATE TABLE IF NOT EXISTS public.conversations (
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  booking_id   UUID NOT NULL UNIQUE REFERENCES public.bookings(id) ON DELETE CASCADE,
+  customer_id  UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  driver_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.messages (
+  id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  conversation_id  UUID NOT NULL REFERENCES public.conversations(id) ON DELETE CASCADE,
+  sender_id        UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  body             TEXT NOT NULL,
+  read_at          TIMESTAMPTZ,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Booking parties can view conversations"
+  ON public.conversations FOR SELECT USING (
+    auth.uid() = customer_id OR auth.uid() = driver_id
+  );
+
+CREATE POLICY "Booking parties can create conversations"
+  ON public.conversations FOR INSERT WITH CHECK (
+    auth.uid() = customer_id OR auth.uid() = driver_id
+  );
+
+CREATE POLICY "Conversation participants can view messages"
+  ON public.messages FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.conversations c
+      WHERE c.id = conversation_id
+        AND (c.customer_id = auth.uid() OR c.driver_id = auth.uid())
+    )
+  );
+
+CREATE POLICY "Conversation participants can send messages"
+  ON public.messages FOR INSERT WITH CHECK (
+    auth.uid() = sender_id AND
+    EXISTS (
+      SELECT 1 FROM public.conversations c
+      WHERE c.id = conversation_id
+        AND (c.customer_id = auth.uid() OR c.driver_id = auth.uid())
+    )
+  );
+
 -- ---- PAYMENTS ----
 CREATE POLICY "Users can view their own payments"
   ON public.payments FOR SELECT USING (
@@ -397,6 +458,8 @@ CREATE INDEX IF NOT EXISTS idx_move_requests_customer_id ON public.move_requests
 CREATE INDEX IF NOT EXISTS idx_move_requests_status ON public.move_requests(status);
 CREATE INDEX IF NOT EXISTS idx_bookings_request_id ON public.bookings(request_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_driver_id ON public.bookings(driver_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_booking_id ON public.conversations(booking_id);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON public.messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_affiliate_referrals_affiliate_id ON public.affiliate_referrals(affiliate_id);
 CREATE INDEX IF NOT EXISTS idx_affiliate_referrals_driver_id ON public.affiliate_referrals(referred_driver_id);
 CREATE INDEX IF NOT EXISTS idx_affiliate_payouts_affiliate_id ON public.affiliate_payouts(affiliate_id);

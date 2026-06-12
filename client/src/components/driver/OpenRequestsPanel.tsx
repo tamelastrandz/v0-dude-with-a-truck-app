@@ -6,7 +6,7 @@
  *  - Filter by urgency and search by city / item description
  *  - Sort by newest, urgency, or city
  *  - "Claim Job" button opens a quote modal
- *  - Quote modal lets the driver enter a price; shows the 15% platform fee
+ *  - Quote modal lets the driver enter a price; shows the 30% platform fee
  *    and their net payout before confirming
  *  - On confirm, calls claimRequest() → creates booking + marks request "booked"
  *  - Success state shows booking confirmation card
@@ -32,6 +32,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { getOpenRequests, claimRequest } from "@/lib/db";
+import { calcDriverPayout, calcPlatformFee } from "../../../shared/const";
 import type { MoveRequest, RequestUrgency } from "@/lib/database.types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ import { cn } from "@/lib/utils";
 
 interface OpenRequestsPanelProps {
   driverId: string;
+  onJobClaimed?: () => void;
 }
 
 type SortKey = "newest" | "urgency" | "city";
@@ -85,8 +87,8 @@ function ClaimModal({ request, driverId, onSuccess, onClose }: ClaimModalProps) 
   }, []);
 
   const numericPrice = parseFloat(price) || 0;
-  const platformFee = Math.round(numericPrice * 0.15 * 100) / 100;
-  const driverPayout = Math.round((numericPrice - platformFee) * 100) / 100;
+  const platformFee = calcPlatformFee(numericPrice);
+  const driverPayout = calcDriverPayout(numericPrice);
   const isValid = numericPrice >= 1;
 
   const handleConfirm = async () => {
@@ -379,7 +381,7 @@ function RequestCard({ request, onClaim, claimed }: RequestCardProps) {
 
 // ---- Main Panel ----
 
-export function OpenRequestsPanel({ driverId }: OpenRequestsPanelProps) {
+export function OpenRequestsPanel({ driverId, onJobClaimed }: OpenRequestsPanelProps) {
   const [requests, setRequests] = useState<MoveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -415,7 +417,8 @@ export function OpenRequestsPanel({ driverId }: OpenRequestsPanelProps) {
 
   const handleClaimSuccess = (requestId: string) => {
     setClaimedIds((prev) => new Set(prev).add(requestId));
-    toast.success("Job claimed! Check your Bookings tab.");
+    onJobClaimed?.();
+    toast.success("Job claimed! See Active Jobs.");
   };
 
   // ---- Filtering & sorting ----
