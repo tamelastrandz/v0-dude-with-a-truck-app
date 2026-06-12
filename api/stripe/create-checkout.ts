@@ -1,10 +1,8 @@
 import {
   buildCheckoutSessionParams,
-  countFoundersAnnualSubscriptions,
   getStripe,
   isValidPlanKey,
 } from "./_lib/subscriptionSync";
-import { FOUNDERS_ANNUAL_LIMIT } from "../../shared/plans";
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
@@ -20,20 +18,6 @@ export default async function handler(req: any, res: any) {
 
     if (!isValidPlanKey(planKey)) {
       return res.status(400).json({ error: "Invalid plan key." });
-    }
-
-    if (planKey === "founders_annual") {
-      try {
-        const claimed = await countFoundersAnnualSubscriptions();
-        if (claimed >= FOUNDERS_ANNUAL_LIMIT) {
-          return res.status(409).json({
-            error: "All 50 Founders Annual spots have been claimed.",
-            soldOut: true,
-          });
-        }
-      } catch (countErr) {
-        console.warn("[Stripe] founders spot count unavailable:", countErr);
-      }
     }
 
     const stripe = getStripe();

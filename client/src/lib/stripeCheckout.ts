@@ -35,8 +35,19 @@ export async function startStripeCheckout(opts: StartCheckoutOptions): Promise<v
   });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.error ?? `Checkout request failed (${response.status})`);
+    const text = await response.text();
+    let detail = `Checkout request failed (${response.status})`;
+    try {
+      const body = JSON.parse(text) as { error?: string };
+      if (typeof body.error === "string" && body.error.trim()) {
+        detail = body.error;
+      }
+    } catch {
+      if (text.includes("STRIPE_SECRET_KEY")) {
+        detail = "Payment server is not configured. Please contact support.";
+      }
+    }
+    throw new Error(detail);
   }
 
   const { url } = await response.json();

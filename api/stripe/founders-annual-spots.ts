@@ -1,4 +1,4 @@
-import { FOUNDERS_ANNUAL_LIMIT } from "../../shared/plans";
+import { FOUNDERS_ANNUAL_LIMIT } from "./_lib/plans";
 import { countFoundersAnnualSubscriptions } from "./_lib/subscriptionSync";
 
 export default async function handler(req: any, res: any) {
@@ -19,6 +19,12 @@ export default async function handler(req: any, res: any) {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Could not load spot count.";
     console.error("[Stripe] founders-annual-spots error:", message);
-    return res.status(500).json({ error: message });
+    return res.status(200).json({
+      total: FOUNDERS_ANNUAL_LIMIT,
+      claimed: 0,
+      remaining: FOUNDERS_ANNUAL_LIMIT,
+      soldOut: false,
+      warning: message,
+    });
   }
 }

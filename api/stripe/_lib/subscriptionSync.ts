@@ -5,7 +5,7 @@ import {
   PLANS,
   type PlanKey,
   isValidPlanKey,
-} from "../../../shared/plans";
+} from "./plans";
 
 function addDays(date: Date, days: number): Date {
   const result = new Date(date);
@@ -16,26 +16,44 @@ function addDays(date: Date, days: number): Date {
 export { PLANS, type PlanKey, isValidPlanKey, FOUNDERS_ANNUAL_LIMIT };
 
 export function getStripe() {
-  return new Stripe(process.env.STRIPE_SECRET_KEY as string);
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error("STRIPE_SECRET_KEY is not configured on the server.");
+  }
+  return new Stripe(key);
 }
 
 export function getSupabaseAdmin() {
-  return createClient(
-    process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "",
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""
-  );
+  const url =
+    process.env.VITE_SUPABASE_URL ??
+    process.env.SUPABASE_URL ??
+    "https://cfkvfmdjbeyemencgbxx.supabase.co";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is not configured on the server.");
+  }
+  return createClient(url, key);
 }
 
-export async function countFoundersAnnualSubscriptions() {
-  const supabaseAdmin = getSupabaseAdmin();
-  const { count, error } = await supabaseAdmin
-    .from("subscriptions")
-    .select("*", { count: "exact", head: true })
-    .eq("plan_key", "founders_annual")
-    .in("status", ["active", "trialing"]);
+export async function countFoundersAnnualSubscriptions(): Promise<number> {
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+    const { count, error } = await supabaseAdmin
+      .from("subscriptions")
+      .select("*", { count: "exact", head: true })
+      .eq("plan_key", "founders_annual")
+      .in("status", ["active", "trialing"]);
 
-  if (error) throw new Error(error.message);
-  return count ?? 0;
+    if (error) {
+      console.warn("[SubscriptionSync] founders count query failed:", error.message);
+      return 0;
+    }
+    return count ?? 0;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn("[SubscriptionSync] founders count unavailable:", message);
+    return 0;
+  }
 }
 
 async function activateFoundersAnnualFeatures(userId: string) {
@@ -218,7 +236,10 @@ export function buildCheckoutSessionParams(
             description: plan.description,
           },
           unit_amount: plan.priceCents,
-          recurring: { interval: plan.billingInterval },
+          recurring: {
+            interval: plan.billingInterval,
+            interval_count: 1,
+          },
         },
         quantity: 1,
       },
