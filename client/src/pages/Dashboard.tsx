@@ -41,7 +41,9 @@ import { startStripeCheckout } from "@/lib/stripeCheckout";
 import { getPendingCheckout, storePendingCheckout } from "@/lib/pendingCheckout";
 import {
   clearCheckoutSessionId,
+  clearPostPaymentProfile,
   getCheckoutSessionIdFromUrl,
+  isPostPaymentFlow,
 } from "@/lib/checkoutSession";
 import { getPlanDisplayPrice, type PlanKey } from "@/lib/planTypes";
 import type { MoveRequest, Subscription, Affiliate, AffiliatePayout, Booking } from "@/lib/database.types";
@@ -60,6 +62,8 @@ export default function Dashboard() {
   const search = useSearch();
   const setupProfile = new URLSearchParams(search).get("setup") === "profile";
   const checkoutSessionId = getCheckoutSessionIdFromUrl(search);
+  const postPaymentFlow = isPostPaymentFlow(search);
+  const [syncingPayment, setSyncingPayment] = useState(postPaymentFlow);
 
   // Data states
   const [requests, setRequests] = useState<MoveRequest[]>([]);
@@ -71,7 +75,7 @@ export default function Dashboard() {
   const [driverTab, setDriverTab] = useState<DriverTab>("requests");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<PlanKey>("standard");
-  const [showProfileSetup, setShowProfileSetup] = useState(setupProfile);
+  const [showProfileSetup, setShowProfileSetup] = useState(setupProfile || postPaymentFlow);
   const [profileCheckDone, setProfileCheckDone] = useState(false);
   const [customerBookings, setCustomerBookings] = useState<any[]>([]);
   const [activeChat, setActiveChat] = useState<{
@@ -103,6 +107,7 @@ export default function Dashboard() {
           setRequests(reqRes.data ?? []);
           setCustomerBookings(bookRes.data ?? []);
         } else if (profile.role === "driver") {
+          setSyncingPayment(postPaymentFlow);
           let subRes = await getUserSubscription(user.id);
           const bookRes = await getDriverBookings(user.id);
 
@@ -120,14 +125,22 @@ export default function Dashboard() {
               if (syncRes.ok) {
                 subRes = await getUserSubscription(user.id);
                 clearCheckoutSessionId();
+                clearPostPaymentProfile();
+              } else {
+                const body = await syncRes.json().catch(() => ({}));
+                console.error("[Dashboard] subscription sync failed:", body.error);
               }
             } catch (err) {
               console.error("[Dashboard] subscription sync failed:", err);
             }
+          } else {
+            clearCheckoutSessionId();
+            clearPostPaymentProfile();
           }
 
           setSubscription(subRes.data);
           setBookings(bookRes.data ?? []);
+          setSyncingPayment(false);
         } else if (profile.role === "affiliate") {
           const { data: aff } = await getAffiliateByUserId(user.id);
           setAffiliate(aff);
@@ -144,19 +157,19 @@ export default function Dashboard() {
     };
 
     loadData();
-  }, [user, profile, checkoutSessionId]);
+  }, [user, profile, checkoutSessionId, postPaymentFlow]);
 
   // Prompt profile setup after payment or when profile is incomplete
   useEffect(() => {
     if (!user || profile?.role !== "driver" || dataLoading) return;
 
-    if (!isActiveSubscription(subscription)) {
+    if (postPaymentFlow || setupProfile) {
+      setShowProfileSetup(true);
       setProfileCheckDone(true);
       return;
     }
 
-    if (setupProfile) {
-      setShowProfileSetup(true);
+    if (!isActiveSubscription(subscription)) {
       setProfileCheckDone(true);
       return;
     }
@@ -169,7 +182,45 @@ export default function Dashboard() {
       setShowProfileSetup(incomplete);
       setProfileCheckDone(true);
     });
-  }, [user, profile?.role, subscription, setupProfile, dataLoading]);
+  }, [user, profile?.role, subscription, setupProfile, postPaymentFlow, dataLoading]);
+
+  const handleRestorePayment = async () => {
+    if (!user || !profile) return;
+    setSyncingPayment(true);
+    try {
+      const syncRes = await fetch("/api/stripe/confirm-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          email: profile.email,
+          sessionId: checkoutSessionId ?? undefined,
+        }),
+      });
+      if (syncRes.ok) {
+        const subRes = await getUserSubscription(user.id);
+        setSubscription(subRes.data);
+        clearCheckoutSessionId();
+        clearPostPaymentProfile();
+        setShowProfileSetup(true);
+        toast.success("Payment found — complete your profile to go live.");
+      } else {
+        const body = await syncRes.json().catch(() => ({}));
+        toast.error(
+          typeof body.error === "string"
+            ? body.error
+            : "Could not verify your payment. Contact support if you were charged."
+        );
+      }
+    } catch {
+      toast.error("Could not verify your payment. Please try again.");
+    } finally {
+      setSyncingPayment(false);
+    }
+  };
+
+  const driverHasPaidAccess =
+    isActiveSubscription(subscription) || postPaymentFlow || showProfileSetup;
 
   // Resume the plan the driver picked at signup if payment didn't complete
   useEffect(() => {
@@ -458,11 +509,13 @@ export default function Dashboard() {
         ================================================================ */}
         {profile.role === "driver" && (
           <div className="flex flex-col gap-6">
-            {setupProfile && dataLoading ? (
+            {(postPaymentFlow || setupProfile) && (dataLoading || syncingPayment) ? (
               <div className="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">
                 Activating your subscription…
               </div>
-            ) : !isActiveSubscription(subscription) ? (
+            ) : (postPaymentFlow || setupProfile) && showProfileSetup ? (
+              <DriverProfileSetup userId={user.id} onComplete={finishProfileSetup} />
+            ) : !driverHasPaidAccess ? (
               <div className="rounded-xl border border-primary/30 bg-primary/5 p-8 text-center">
                 <Truck className="mx-auto size-12 text-primary" />
                 <h2 className="font-heading mt-4 text-2xl font-bold uppercase tracking-wide text-foreground">
@@ -472,20 +525,30 @@ export default function Dashboard() {
                   Complete your {checkoutCadence} to browse job requests, track active
                   hauls, and message customers in the app.
                 </p>
-                <button
-                  type="button"
-                  disabled={checkoutLoading}
-                  onClick={handleDriverCheckout}
-                  className="font-heading mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-primary px-6 text-sm font-semibold uppercase tracking-wide text-primary-foreground hover:bg-primary/80 disabled:opacity-60"
-                >
-                  {checkoutLoading
-                    ? "Redirecting to checkout…"
-                    : checkoutPlan === "founders_annual"
-                      ? `Complete payment — ${checkoutPrice}`
-                      : checkoutPlan === "founders"
-                        ? "Start trial — $14.50/mo"
-                        : "Subscribe — $29/mo"}
-                </button>
+                <div className="mt-6 flex flex-col items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={checkoutLoading}
+                    onClick={handleDriverCheckout}
+                    className="font-heading inline-flex h-11 items-center justify-center rounded-lg bg-primary px-6 text-sm font-semibold uppercase tracking-wide text-primary-foreground hover:bg-primary/80 disabled:opacity-60"
+                  >
+                    {checkoutLoading
+                      ? "Redirecting to checkout…"
+                      : checkoutPlan === "founders_annual"
+                        ? `Complete payment — ${checkoutPrice}`
+                        : checkoutPlan === "founders"
+                          ? "Start trial — $14.50/mo"
+                          : "Subscribe — $29/mo"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={syncingPayment}
+                    onClick={handleRestorePayment}
+                    className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline disabled:opacity-60"
+                  >
+                    {syncingPayment ? "Checking payment…" : "Already paid? Restore my access"}
+                  </button>
+                </div>
               </div>
             ) : showProfileSetup ? (
               <DriverProfileSetup userId={user.id} onComplete={finishProfileSetup} />

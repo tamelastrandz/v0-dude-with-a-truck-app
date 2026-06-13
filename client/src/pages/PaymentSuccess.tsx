@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { clearPendingCheckout } from "@/lib/pendingCheckout";
 import {
   clearCheckoutSessionId,
+  markPostPaymentProfile,
   storeCheckoutSessionId,
 } from "@/lib/checkoutSession";
 import type { PlanKey } from "@/lib/planTypes";
@@ -120,6 +121,7 @@ export default function PaymentSuccess() {
     : "/dashboard?setup=profile";
 
   useEffect(() => {
+    markPostPaymentProfile();
     if (sessionId) storeCheckoutSessionId(sessionId);
   }, [sessionId]);
 
@@ -142,7 +144,6 @@ export default function PaymentSuccess() {
           if (!cancelled) {
             setSyncOk(true);
             clearPendingCheckout();
-            clearCheckoutSessionId();
           }
         } else {
           const body = await res.json().catch(() => ({}));

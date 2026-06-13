@@ -88,10 +88,40 @@ async function upsertSubscriptionFromCheckout(userId, planKey, stripeCustomerId,
     .maybeSingle();
 
   if (existing?.id) {
-    const { error } = await supabaseAdmin.from("subscriptions").update(payload).eq("id", existing.id);
+    let { error } = await supabaseAdmin.from("subscriptions").update(payload).eq("id", existing.id);
+    if (error) {
+      const minimal = {
+        user_id: userId,
+        plan_name: plan.name,
+        monthly_price: plan.priceCents / 100,
+        status,
+        stripe_customer_id: stripeCustomerId,
+        stripe_subscription_id: stripeSubscriptionId,
+        current_period_start: payload.current_period_start,
+        current_period_end: payload.current_period_end,
+        trial_start_date: payload.trial_start_date,
+        trial_end_date: payload.trial_end_date,
+      };
+      ({ error } = await supabaseAdmin.from("subscriptions").update(minimal).eq("id", existing.id));
+    }
     if (error) throw new Error(error.message);
   } else {
-    const { error } = await supabaseAdmin.from("subscriptions").insert(payload);
+    let { error } = await supabaseAdmin.from("subscriptions").insert(payload);
+    if (error) {
+      const minimal = {
+        user_id: userId,
+        plan_name: plan.name,
+        monthly_price: plan.priceCents / 100,
+        status,
+        stripe_customer_id: stripeCustomerId,
+        stripe_subscription_id: stripeSubscriptionId,
+        current_period_start: payload.current_period_start,
+        current_period_end: payload.current_period_end,
+        trial_start_date: payload.trial_start_date,
+        trial_end_date: payload.trial_end_date,
+      };
+      ({ error } = await supabaseAdmin.from("subscriptions").insert(minimal));
+    }
     if (error) throw new Error(error.message);
   }
 
